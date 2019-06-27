@@ -21,7 +21,7 @@ app.get('/play', (req, res) => {
     } = {}
   } = req;
 
-  const queryIsValid = Boolean(playerid || column)
+  const queryIsValid = Boolean(playerid && column)
   if (!queryIsValid) {
     res.status(400).json({
       message: 'Your query is wrong!'
