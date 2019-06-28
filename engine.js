@@ -82,7 +82,7 @@ class Engine {
   }
 
   getBoard() {
-    return this.board;
+    return [...this.board];
   }
 
   getPlayers() {
@@ -97,11 +97,15 @@ class Engine {
   }
 
   getLastPlayerWhoPlayed() {
-    return this.lastPlayerWhoPlayed;
+    const { lastPlayerWhoPlayed } = this;
+
+    return lastPlayerWhoPlayed || 'nobody';
   }
 
   getWinner() {
-    return this.winner ? this.winner : 'no winner';
+    const { winner } = this;
+
+    return winner || 'no winner';
   }
 
   getStatus() {
@@ -116,7 +120,7 @@ class Engine {
       tokens,
       lastPlayerWhoPlayed,
       winner,
-      board
+      board: board.reverse()
     };
   }
 }
