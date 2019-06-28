@@ -27,6 +27,7 @@ npm run start
 
 Les paramètres :
 > `playerid` ne peut avoir que deux valeurs: `red` et `yellow`.
+
 > `column` prend des valeurs entre `1` et `7`.
 
 
@@ -34,4 +35,4 @@ Les paramètres :
 
 ## Connaitre le statut de la partie
 
-`GET /api.stauts`
+`GET /api/stauts`
