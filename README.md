@@ -8,11 +8,26 @@ npm install
 npm run start
 `
 
-## Comment jouer 
-#### Placer un jeton
+## Comment jouer avec l'interface graphique
 
-`GET /play?playerid=red&column=3`
+1. Lancer le serveur `npm run start`
 
-#### Statut de la partie
+2. Saisir `http://localhost:3000` sur votre navigateur et c'est tout!
 
-`GET /stauts`
+<img src="https://gitlab.com/issoufi/puissance-4/blob/master/screenshots/screenshot1.png" alt="UI">
+
+
+## Comment jouer via l'API
+
+`GET /api/play?playerid=red&column=3`
+
+Les paramètres :
+> `playerid` ne peut avoir que deux valeurs: `red` et `yellow`.
+> `column` prend des valeurs entre `1` et `7`.
+
+
+<img src="https://gitlab.com/issoufi/puissance-4/blob/master/screenshots/screenshot1.png" alt="API">
+
+## Connaitre le statut de la partie
+
+`GET /api.stauts`
