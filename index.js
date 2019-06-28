@@ -1,19 +1,24 @@
 // Dependencies
 const express = require('express');
+const path = require('path');
+
+// Engine
 const Engine = require('./engine');
+
+// App
 const app = express();
 
-app.get('/', (req, res) => {
-  res.send(`It's work !`);
-});
+// frontend
+app.use('/', express.static(`${__dirname}/public`));
 
-app.get('/status', (req, res) => {
+// API
+app.get('/api/status', (req, res) => {
   const status = Engine.getStatus();
 
   res.status(200).json(status);
 });
 
-app.get('/play', (req, res) => {
+app.get('/api/play', (req, res) => {
   const {
     query: {
       playerid,
@@ -38,7 +43,7 @@ app.get('/play', (req, res) => {
 
   const status = Engine.getStatus();
 
-  console.log({ status });
+  // console.log({ status });
 
   res.status(200).json(status);
 })
