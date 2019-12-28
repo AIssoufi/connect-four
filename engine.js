@@ -17,7 +17,7 @@ class Engine {
       [0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0]
+      [0, 0, 0, 0, 0, 0, 0],
     ];
 
     this.nbRedToken = 21;
@@ -31,7 +31,8 @@ class Engine {
   }
 
   hasEnoughToken(currentPlayer) {
-    const playerPoint = (currentPlayer === this.RED_PLAYER_ID) ? this.nbRedToken : this.nbYellowToken;
+    const redIsCurrentPlayer = currentPlayer === this.RED_PLAYER_ID;
+    const playerPoint = redIsCurrentPlayer ? this.nbRedToken : this.nbYellowToken;
 
     return playerPoint > 0;
   }
@@ -42,7 +43,7 @@ class Engine {
 
   play(playerId, humanColumnNumber) {
     if (humanColumnNumber < 1 || humanColumnNumber > 7) {
-      throw new Error(`The column number must be between 1 and 7!`);
+      throw new Error('The column number must be between 1 and 7!');
     }
 
     const playerExist = playerId === this.RED_PLAYER_ID || playerId === this.YELLOW_PLAYER_ID;
@@ -52,11 +53,12 @@ class Engine {
     if (!isYourTurn) throw new Error(`${playerId}: it's not your turn !`);
 
     const hasEnoughToken = this.hasEnoughToken(playerId);
-    if (!hasEnoughToken) throw new Error(`You do not have enough token to play!`);
+    if (!hasEnoughToken) throw new Error('You do not have enough token to play!');
 
     let hasPlayed = false;
     const column = humanColumnNumber - 1;
-    const newBoard = this.board.map(currentRow => {
+    const newBoard = this.board.map((aCurrentRow) => {
+      const currentRow = aCurrentRow;
       if (hasPlayed) return currentRow;
 
       const box = currentRow[column];
@@ -97,14 +99,14 @@ class Engine {
     const allIndexesRowsOfBoard = [0, 1, 2, 3, 4, 5];
     const allIndexesColumnsNeededToCheckAlignment = [0, 1, 2, 3];
 
-    const alignmentWasFound = allIndexesRowsOfBoard.some(startRow =>
-      allIndexesColumnsNeededToCheckAlignment.some(
-        startColumn => this.checkAlignment({
+    const alignmentWasFound = allIndexesRowsOfBoard.some(
+      (startRow) => allIndexesColumnsNeededToCheckAlignment.some(
+        (startColumn) => this.checkAlignment({
           startColumn,
           searchedPattern: currentPlayer,
-          array: board[startRow]
-        })
-      )
+          array: board[startRow],
+        }),
+      ),
     );
 
     return alignmentWasFound;
@@ -114,22 +116,22 @@ class Engine {
     const allIndexesColumnsOfBoard = [0, 1, 2, 3, 4, 5, 6];
     const allIndexesColumnsNeededToCheckAlignment = [0, 1, 2];
 
-    const alignmentWasFound = allIndexesColumnsOfBoard.some(column => {
-      const rowsTransformedToColumns = board.map(row => row[column]);
+    const alignmentWasFound = allIndexesColumnsOfBoard.some((column) => {
+      const rowsTransformedToColumns = board.map((row) => row[column]);
 
       return allIndexesColumnsNeededToCheckAlignment.some(
-        startColumn => this.checkAlignment({
+        (startColumn) => this.checkAlignment({
           startColumn,
           searchedPattern: currentPlayer,
-          array: rowsTransformedToColumns
-        })
+          array: rowsTransformedToColumns,
+        }),
       );
-    })
+    });
 
     return alignmentWasFound;
   }
 
-  checkAlignment({ startColumn, searchedPattern, array }) {
+  static checkAlignment({ startColumn, searchedPattern, array }) {
     if (startColumn < 0 || startColumn > array.length) {
       return false;
     }
@@ -159,7 +161,7 @@ class Engine {
   getTokens() {
     return {
       [this.RED_PLAYER_ID]: this.nbRedToken,
-      [this.YELLOW_PLAYER_ID]: this.nbYellowToken
+      [this.YELLOW_PLAYER_ID]: this.nbYellowToken,
     };
   }
 
@@ -187,7 +189,7 @@ class Engine {
       tokens,
       lastPlayerWhoPlayed,
       winner,
-      board: board.reverse()
+      board: board.reverse(),
     };
   }
 }
