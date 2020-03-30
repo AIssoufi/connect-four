@@ -10,7 +10,7 @@ const start = () => {
 }
 
 const refreshBoard = () => {
-  fetch('/api/status')
+  fetch('/game/status')
     .then(response => response.json())
     .then(statusGame => {
       updateBoard(statusGame);
@@ -82,7 +82,7 @@ const renderPossibilities = ({ board, players, lastPlayerWhoPlayed }) => {
       urlSearchParams.append('playerid', nexPlayer);
       urlSearchParams.append('column', i + 1);
 
-      const url = `/api/play?${urlSearchParams.toString()}`;
+      const url = `/game/play?${urlSearchParams.toString()}`;
       fetch(url)
         .then(response => response.json())
         .then(statusGame => {
