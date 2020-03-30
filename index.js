@@ -1,48 +1,30 @@
 // Dependencies
 const express = require('express');
+const swaggerUi = require('swagger-ui-express');
+const swaggerJSDoc = require('swagger-jsdoc');
 
-// Engine
-const Engine = require('./engine');
-
-// App
+// Init
 const app = express();
+const swaggerOptions = {
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Connect 4 - API',
+      version: '1.0.0',
+    },
+  },
+  apis: ['./routes/index.js'],
+  basePath: '/game',
+};
+const swaggerSpec = swaggerJSDoc(swaggerOptions);
 
-// frontend
+// Routes
+const routes = require('./routes');
+
+// MiddleWare
 app.use('/', express.static(`${__dirname}/public`));
-
-// API
-app.get('/api/status', (req, res) => {
-  const status = Engine.getStatus();
-
-  res.status(200).json(status);
-});
-
-app.get('/api/play', (req, res) => {
-  const {
-    query: {
-      playerid,
-      column,
-    } = {},
-  } = req;
-
-  const queryIsValid = Boolean(playerid && column)
-  if (!queryIsValid) {
-    res.status(400).json({
-      message: 'Your query is wrong!',
-    });
-  }
-
-  try {
-    Engine.play(playerid, Number.parseInt(column, 10));
-  } catch (error) {
-    const { message = 'Unknow error' } = error;
-    res.status(400).json({ message });
-  }
-
-  const status = Engine.getStatus();
-
-  res.status(200).json(status);
-});
+app.use('/game', routes);
+app.use('/api/v1', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.listen(3000, () => {
   // eslint-disable-next-line no-console
