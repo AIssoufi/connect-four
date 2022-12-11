@@ -10,7 +10,7 @@
   "author": "Issoufi ADAM <issoufi.adam1@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "swagger-jsdoc": "^3.5.0",
     "swagger-ui-express": "^4.1.4"
   },
