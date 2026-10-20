@@ -34,6 +34,9 @@ The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), d
   (`worker/Game.js`), which saves its moves and plays them again in the engine of `app/` when it
   wakes up. The engine does not depend on Express or on Cloudflare.
 
+[docs/decisions/0002](docs/decisions/0002-host-on-a-cloudflare-worker-with-durable-objects.md)
+explains these choices.
+
 ## Run locally
 
 ```sh
