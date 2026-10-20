@@ -247,8 +247,9 @@ const CONFUSING_BROWSER_GLOBALS = [
 
 /**
  * ESLint configuration: the recommended rules, plus the rules of Airbnb base that the code was
- * written against. The code runs in Node.js and on the Worker, except the page scripts of
- * `public/`, which run in the browser as classic scripts.
+ * written against. The code runs in Node.js and on the Worker, except the scripts of `public/`,
+ * which run in the browser: the page and its helpers as ES modules, the API docs as classic
+ * scripts.
  */
 module.exports = [
   // The local state of `wrangler dev`, which holds generated code.
@@ -272,5 +273,10 @@ module.exports = [
         ...CONFUSING_BROWSER_GLOBALS,
       ],
     },
+  },
+  // The page and its helpers load as ES modules, so that Vitest can import the helpers.
+  {
+    files: ['public/*.js'],
+    languageOptions: { sourceType: 'module' },
   },
 ];

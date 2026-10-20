@@ -15,7 +15,10 @@ circles above the board to drop a token of the current player in that column: it
 lowest free cell. The first player who aligns four tokens, in a row, a column or a diagonal,
 wins. When the 42 cells are full with no alignment, the game is a draw.
 
-Each visitor plays their own game, and reloading the page starts a new one.
+Above the board, the page says whose turn it is, then who won or that the game is a draw. It
+shows why a move cannot be played, such as a full column, whose circle is grayed out, or a game
+that is over. Each visitor plays their own game: the Nouvelle partie button, or reloading the
+page, starts a new one.
 
 ## Stack
 
@@ -57,8 +60,11 @@ game is deleted 7 days after its start or its last move, so its id then returns 
 The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), described by
 `wrangler.jsonc`:
 
-- Cloudflare serves the files of `public/` (the page, its script and the API docs) before the
-  Worker runs.
+- Cloudflare serves the files of `public/` (the page, its scripts, its favicon and the API docs)
+  before the Worker runs. `public/.assetsignore` keeps the tests of the page helpers out of it.
+- The page loads `public/main.js` as an ES module, which draws the game. It calls the API through
+  `public/api.js`, imports its rules from `public/utils.js`, and writes its texts with
+  `public/texts.js` from the copy of `public/constants.js`.
 - `index.js` runs the Express app of `routes/` on the Worker, with the `nodejs_compat` flag.
 - Each game lives in its own [Durable Object](https://developers.cloudflare.com/durable-objects/)
   (`worker/Game.js`), which saves its moves and plays them again in the engine of `app/` when it
@@ -102,6 +108,8 @@ needs no build step, no variable and no secret.
 
 - the engine (`app/`), the routes (`routes/`) and the storage of the games (`worker/`), with fake
   Durable Objects;
+- the helpers of the page (`public/utils.test.js`, `public/texts.test.js`) and its calls to the
+  API (`public/api.test.js`), with a fake `fetch`;
 - the whole Worker (`index.test.js`), run in the local Workers runtime by `createTestHarness` of
   Wrangler, with its files and its Durable Objects;
 - the commit message checks, which call Git.
@@ -115,9 +123,9 @@ version used in development and in the CI: 24, an LTS release.
 
 - `pnpm lint:js` checks every JavaScript file with ESLint 10 and its flat configuration,
   `eslint.config.js`: the recommended rules, plus the rules of Airbnb base that the code was
-  written against, the layout ones from [ESLint Stylistic](https://eslint.style/). The page
-  scripts of `public/` are linted with the browser globals, and the other files with the Node.js
-  ones.
+  written against, the layout ones from [ESLint Stylistic](https://eslint.style/). The
+  scripts of `public/` are linted with the browser globals, the page ones as ES modules, and the
+  other files with the Node.js ones.
 - `pnpm lint:api` checks the OpenAPI document with the recommended rules of
   [Redocly CLI](https://redocly.com/docs/cli/), each warning made an error (`redocly.yaml`).
   `.redocly.lint-ignore.yaml` lists the problems ignored on purpose, each with its reason.

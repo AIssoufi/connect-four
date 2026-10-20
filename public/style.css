@@ -4,6 +4,8 @@ html {
   --empty-cell-color: gray;
   --token-size: 50px;
   --board-color: rgba(10, 53, 220, 1);
+  --error-text-color: #a00000;
+  --disabled-opacity: 0.4;
 }
 body {
   background-color: white;
@@ -67,10 +69,34 @@ body main .yellow-token, #board .column.yellow-token {
   border-style: dashed;
 }
 
-#control-panel.current-plyer-is-red [class*="token"]:hover {
+#control-panel.current-plyer-is-red [class*="token"]:not([aria-disabled="true"]):hover {
   background-color: var(--red-token-color);
 }
 
-#control-panel.current-plyer-is-yellow [class*="token"]:hover {
+#control-panel.current-plyer-is-yellow [class*="token"]:not([aria-disabled="true"]):hover {
   background-color: var(--yellow-token-color);
+}
+
+#control-panel [aria-disabled="true"] {
+  opacity: var(--disabled-opacity);
+  cursor: not-allowed;
+}
+
+#game-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#game-info p {
+  margin: 4px 0;
+  min-height: 1.2em;
+}
+
+#game-status {
+  font-weight: bold;
+}
+
+#game-message {
+  color: var(--error-text-color);
 }
