@@ -81,6 +81,15 @@ describe('the Worker', () => {
     expect(await response.text()).toContain('<title>Puissance 4</title>');
   });
 
+  it('serves the favicon that the page links to', async () => {
+    const page = await harness.fetch('/');
+    const favicon = await harness.fetch('/favicon.svg');
+
+    expect(await page.text()).toContain('<link rel="icon" type="image/svg+xml" href="favicon.svg">');
+    expect(favicon.status).toBe(OK_STATUS);
+    expect(favicon.headers.get('Content-Type')).toContain('image/svg+xml');
+  });
+
   it('serves the docs of the API at /api/v1', async () => {
     const redirect = await harness.fetch('/api/v1', { redirect: 'manual' });
     const docs = await harness.fetch('/api/v1/');
