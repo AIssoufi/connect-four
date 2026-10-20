@@ -133,8 +133,8 @@ GitHub Actions runs `.github/workflows/ci.yml` on every pull request and every p
   add each new major release of Node.js to it by hand.
 
 Each job sets pnpm up with `pnpm/action-setup`, which reads the `packageManager` field. It is
-pinned to the commit of v6.1.0, the first release that installs pnpm 12 directly, since its `v6`
-tag still points to v6.0.10.
+pinned to the commit of v6.1.0, the first release that starts from pnpm 12 instead of 11, since
+its `v6` tag still points to v6.0.10.
 
 `.github/workflows/commit-messages.yml` checks the commit messages of every pull request, and
 its title unless a bot opened it, with commitlint (see [Commit messages](#commit-messages)).

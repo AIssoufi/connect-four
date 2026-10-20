@@ -85,4 +85,6 @@ runs the same tools: only the script runner changes.
 - Dependabot reads `pnpm-lock.yaml` under its `npm` ecosystem, but documents pnpm up to version
   10 only. If it puts a release younger than 7 days in the lockfile, such as a transitive
   dependency, the CI refuses its pull request: watch the first one.
-- `pnpm/action-setup` v6 starts from pnpm 11, then switches to the pinned version.
+- `pnpm/action-setup` is pinned to the commit of v6.1.0, which starts from pnpm 12 and switches
+  to the pinned version. Its `v6` tag still points to v6.0.10, which starts from pnpm 11 and logs
+  a false warning about a pnpm 10 layout.
