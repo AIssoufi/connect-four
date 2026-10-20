@@ -90,13 +90,14 @@ describe('the Worker', () => {
     expect(favicon.headers.get('Content-Type')).toContain('image/svg+xml');
   });
 
-  it('serves the helpers of the page, but not their tests', async () => {
-    const helpers = await harness.fetch('/utils.js');
+  it('serves the modules of the page, but not their tests', async () => {
+    const modules = ['/main.js', '/constants.js', '/utils.js', '/texts.js', '/api.js'];
+    const helpers = await Promise.all(modules.map((route) => harness.fetch(route)));
     const tests = await harness.fetch('/utils.test.js');
 
-    expect(helpers.status).toBe(OK_STATUS);
+    expect(helpers.map(({ status }) => status)).toEqual(modules.map(() => OK_STATUS));
     expect(tests.status).toBe(NOT_FOUND_STATUS);
-    await tests.body.cancel();
+    await Promise.all([...helpers, tests].map((response) => response.body.cancel()));
   });
 
   it('serves the docs of the API at /api/v1', async () => {
