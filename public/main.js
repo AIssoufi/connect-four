@@ -1,40 +1,10 @@
 let setIntervalId;
 
-document.addEventListener("DOMContentLoaded", function () {
-  start();
-});
-
-const start = () => {
-  refreshBoard();
-  setIntervalId = setInterval(refreshBoard, 2000);
-}
-
-const refreshBoard = () => {
-  fetch('/game/status')
-    .then(response => response.json())
-    .then(statusGame => {
-      updateBoard(statusGame);
-    });
-}
-
-const updateBoard = ({ board, players, winner, lastPlayerWhoPlayed }) => {
-  renderBoard(board);
-  renderPossibilities({ board, players, lastPlayerWhoPlayed });
-
-  const gameIsEnd = players.some(player => player === winner);
-  if (gameIsEnd) {
-    alert(`Winner : ${winner}`);
-
-    clearInterval(setIntervalId);
-    return;
-  }
-}
-
-const renderBoard = matrix => {
+const renderBoard = (matrix) => {
   const rowClassName = 'row';
   const columnClassName = 'column token';
 
-  const boardElem = document.querySelector("#board");
+  const boardElem = document.querySelector('#board');
   boardElem.innerHTML = '';
 
   matrix.forEach((row, rowIndex) => {
@@ -58,21 +28,32 @@ const renderBoard = matrix => {
       rowElem.appendChild(columnElem);
     });
 
-    boardElem.appendChild(rowElem)
+    boardElem.appendChild(rowElem);
   });
 
+  // eslint-disable-next-line no-console
   console.log('updated !');
-}
+};
 
-
-const renderPossibilities = ({ board, players, lastPlayerWhoPlayed }) => {
+/**
+ * Renders one placeholder token per column; a click plays the next player in that column.
+ * @param {object} params
+ * @param {Array<Array<string|number>>} params.board - The board, top row first.
+ * @param {string[]} params.players - The ids of the players.
+ * @param {string} params.lastPlayerWhoPlayed - The player who made the last move.
+ * @param {(statusGame: object) => void} params.onGameStatus - Receives the game status that a
+ *   move returns.
+ */
+const renderPossibilities = ({
+  board, players, lastPlayerWhoPlayed, onGameStatus,
+}) => {
   const placeholderTokenClassName = 'token';
   const posElem = document.querySelector('#control-panel');
   posElem.innerHTML = '';
 
   const nbPossibilities = board[0].length;
-  const nexPlayer = players.filter(player => player != lastPlayerWhoPlayed)[0];
-  for (let i = 0; i < nbPossibilities; ++i) {
+  const nexPlayer = players.filter((player) => player !== lastPlayerWhoPlayed)[0];
+  for (let i = 0; i < nbPossibilities; i += 1) {
     const tokenElem = document.createElement('div');
 
     tokenElem.className = placeholderTokenClassName;
@@ -84,13 +65,47 @@ const renderPossibilities = ({ board, players, lastPlayerWhoPlayed }) => {
 
       const url = `/game/play?${urlSearchParams.toString()}`;
       fetch(url)
-        .then(response => response.json())
-        .then(statusGame => {
-          updateBoard(statusGame);
+        .then((response) => response.json())
+        .then((statusGame) => {
+          onGameStatus(statusGame);
         });
-    })
+    });
 
     posElem.appendChild(tokenElem);
     posElem.className = `current-plyer-is-${nexPlayer}`;
   }
-}
+};
+
+const updateBoard = ({
+  board, players, winner, lastPlayerWhoPlayed,
+}) => {
+  renderBoard(board);
+  renderPossibilities({
+    board, players, lastPlayerWhoPlayed, onGameStatus: updateBoard,
+  });
+
+  const gameIsEnd = players.some((player) => player === winner);
+  if (gameIsEnd) {
+    // eslint-disable-next-line no-alert
+    alert(`Winner : ${winner}`);
+
+    clearInterval(setIntervalId);
+  }
+};
+
+const refreshBoard = () => {
+  fetch('/game/status')
+    .then((response) => response.json())
+    .then((statusGame) => {
+      updateBoard(statusGame);
+    });
+};
+
+const start = () => {
+  refreshBoard();
+  setIntervalId = setInterval(refreshBoard, 2000);
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  start();
+});
