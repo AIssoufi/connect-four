@@ -40,21 +40,27 @@ jobs:
       - name: Run the tests
         run: npm test
 
-  test-node-22:
-    # The oldest major release of Node.js that the engines field of package.json accepts.
-    name: Test on Node.js 22
+  test-other-node-versions:
+    name: Test on Node.js ${{ matrix.node-version }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # The oldest major release of Node.js that the engines field of package.json accepts and
+        # the newest one released, besides the one of .nvmrc. Dependabot does not update this list:
+        # add each new major release by hand.
+        node-version: [22, 26]
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
         with:
           persist-credentials: false
 
-      - name: Set up Node.js 22
+      - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
           cache: npm
 
       - name: Install dependencies

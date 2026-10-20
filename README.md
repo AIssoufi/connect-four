@@ -29,7 +29,9 @@ any error or warning. The page script of `public/` is linted with the browser gl
 GitHub Actions runs `.github/workflows/ci.yml` on every pull request and every push to `master`:
 
 - `npm ci`, `npm run lint` and `npm test` on the Node.js version of `.nvmrc`;
-- `npm ci` and `npm test` on Node.js 22, the oldest major release that `engines` accepts.
+- `npm ci` and `npm test` on Node.js 22 and 26: the oldest major release that `engines` accepts
+  and the newest one released. Dependabot does not update this matrix: add each new major
+  release of Node.js to it by hand.
 
 Dependabot checks npm and GitHub Actions every week, for releases at least a week old
 (`.github/dependabot.yml`): one pull request for the npm minor and patch updates, one per npm
