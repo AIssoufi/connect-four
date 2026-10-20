@@ -1,0 +1,2 @@
+# The tests of the page helpers: Vitest runs them, and the Worker does not serve them.
+*.test.js

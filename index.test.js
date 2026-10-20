@@ -90,6 +90,15 @@ describe('the Worker', () => {
     expect(favicon.headers.get('Content-Type')).toContain('image/svg+xml');
   });
 
+  it('serves the helpers of the page, but not their tests', async () => {
+    const helpers = await harness.fetch('/utils.js');
+    const tests = await harness.fetch('/utils.test.js');
+
+    expect(helpers.status).toBe(OK_STATUS);
+    expect(tests.status).toBe(NOT_FOUND_STATUS);
+    await tests.body.cancel();
+  });
+
   it('serves the docs of the API at /api/v1', async () => {
     const redirect = await harness.fetch('/api/v1', { redirect: 'manual' });
     const docs = await harness.fetch('/api/v1/');
