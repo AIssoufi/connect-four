@@ -1,197 +1,168 @@
+const GameError = require('./GameError');
+const { isPartOfAlignment } = require('./alignment');
+const { isKnownPlayer, isValidColumnNumber } = require('./utils');
+const {
+  PLAYER_IDS,
+  EMPTY_CELL,
+  ROW_COUNT,
+  COLUMN_COUNT,
+  FIRST_COLUMN_NUMBER,
+  TOKENS_PER_PLAYER,
+  GAME_STATES,
+  NO_WINNER,
+  NOBODY,
+} = require('./constants');
 
+/**
+ * Builds an empty board: `ROW_COUNT` rows of `COLUMN_COUNT` empty cells, bottom row first.
+ * @returns {Array<Array<string|number>>} The new board.
+ */
+const createEmptyBoard = () => Array.from(
+  { length: ROW_COUNT },
+  () => Array(COLUMN_COUNT).fill(EMPTY_CELL),
+);
+
+/**
+ * Runs one game of Connect Four: it keeps the board, the turn, the tokens left
+ * and the result, and refuses any move that breaks a rule with a `GameError`.
+ * It does not depend on Express, so any server can host one instance per game.
+ */
 class Engine {
   constructor() {
-    if (!Engine.instance) {
-      this.init();
-
-      Engine.instance = this;
-    }
-
-    return Engine.instance;
+    this.init();
   }
 
+  /** Starts a new game: empty board, full token stocks, no last player and no winner. */
   init() {
-    this.board = [
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-      [0, 0, 0, 0, 0, 0, 0],
-    ];
-
-    this.nbRedToken = 21;
-    this.nbYellowToken = 21;
+    this.board = createEmptyBoard();
+    this.tokens = {
+      [PLAYER_IDS.RED]: TOKENS_PER_PLAYER,
+      [PLAYER_IDS.YELLOW]: TOKENS_PER_PLAYER,
+    };
     this.lastPlayerWhoPlayed = undefined;
     this.winner = undefined;
-
-    this.RED_PLAYER_ID = 'red';
-    this.YELLOW_PLAYER_ID = 'yellow';
-    this.EMPTY_BOX = 0;
+    this.state = GAME_STATES.PLAYING;
   }
 
+  /**
+   * Drops a token of a player in a column, then updates the result of the game.
+   * @param {object} params
+   * @param {string} params.playerId - The player who plays, one of `PLAYER_IDS`.
+   * @param {number} params.column - The column number, from 1 (left) to `COLUMN_COUNT`.
+   * @throws {GameError} When the player or the column is invalid, the game is
+   * over, it is the other player's turn, the player has no token left or the
+   * column is full. The game does not change then.
+   */
+  play({ playerId, column } = {}) {
+    if (!isKnownPlayer(playerId)) {
+      throw new GameError(`The player must be one of: ${Object.values(PLAYER_IDS).join(', ')}!`);
+    }
+
+    if (!isValidColumnNumber(column)) {
+      throw new GameError(`The column number must be an integer between ${FIRST_COLUMN_NUMBER} and ${COLUMN_COUNT}!`);
+    }
+
+    const isGameOver = this.state !== GAME_STATES.PLAYING;
+    if (isGameOver) throw new GameError('The game is over!');
+
+    if (!this.isYourTurn(playerId)) throw new GameError(`${playerId}: it's not your turn!`);
+
+    // Unreachable in normal play: alternate turns fill the board exactly when both stocks
+    // run out, so the game ends first.
+    if (!this.hasEnoughToken(playerId)) throw new GameError('You do not have enough token to play!');
+
+    const columnIndex = column - FIRST_COLUMN_NUMBER;
+    const rowIndex = this.board.findIndex((row) => row[columnIndex] === EMPTY_CELL);
+    const isColumnFull = rowIndex === -1;
+    if (isColumnFull) throw new GameError(`The column ${column} is full!`);
+
+    this.board[rowIndex][columnIndex] = playerId;
+    this.tokens[playerId] -= 1;
+    this.lastPlayerWhoPlayed = playerId;
+
+    this.updateState({ row: rowIndex, column: columnIndex });
+  }
+
+  /**
+   * Sets the winner and the state of the game after a token lands in a cell.
+   * @param {object} params
+   * @param {number} params.row - The row index of the new token.
+   * @param {number} params.column - The column index of the new token.
+   */
+  updateState({ row, column }) {
+    if (isPartOfAlignment({ board: this.board, row, column })) {
+      this.winner = this.lastPlayerWhoPlayed;
+      this.state = GAME_STATES.WON;
+      return;
+    }
+
+    const isBoardFull = this.board.every((boardRow) => !boardRow.includes(EMPTY_CELL));
+    if (isBoardFull) this.state = GAME_STATES.DRAW;
+  }
+
+  /**
+   * @param {string} currentPlayer - The player who wants to play.
+   * @returns {boolean} `true` when the player has at least one token left.
+   */
   hasEnoughToken(currentPlayer) {
-    const redIsCurrentPlayer = currentPlayer === this.RED_PLAYER_ID;
-    const playerPoint = redIsCurrentPlayer ? this.nbRedToken : this.nbYellowToken;
-
-    return playerPoint > 0;
+    return this.tokens[currentPlayer] > 0;
   }
 
+  /**
+   * @param {string} currentPlayer - The player who wants to play.
+   * @returns {boolean} `true` unless the player made the last move.
+   */
   isYourTurn(currentPlayer) {
     return this.lastPlayerWhoPlayed !== currentPlayer;
   }
 
-  play(playerId, humanColumnNumber) {
-    if (humanColumnNumber < 1 || humanColumnNumber > 7) {
-      throw new Error('The column number must be between 1 and 7!');
-    }
-
-    const playerExist = playerId === this.RED_PLAYER_ID || playerId === this.YELLOW_PLAYER_ID;
-    if (!playerExist) throw new Error(`The player ${playerId} is unknow !`);
-
-    const isYourTurn = this.isYourTurn(playerId);
-    if (!isYourTurn) throw new Error(`${playerId}: it's not your turn !`);
-
-    const hasEnoughToken = this.hasEnoughToken(playerId);
-    if (!hasEnoughToken) throw new Error('You do not have enough token to play!');
-
-    let hasPlayed = false;
-    const column = humanColumnNumber - 1;
-    const newBoard = this.board.map((aCurrentRow) => {
-      const currentRow = aCurrentRow;
-      if (hasPlayed) return currentRow;
-
-      const box = currentRow[column];
-      const boxIsEmpty = box === this.EMPTY_BOX;
-
-      if (boxIsEmpty) {
-        currentRow[column] = playerId;
-
-        if (playerId === this.RED_PLAYER_ID) {
-          this.nbRedToken -= 1;
-        } else {
-          this.nbYellowToken -= 1;
-        }
-
-        hasPlayed = true;
-        this.lastPlayerWhoPlayed = playerId;
-      }
-
-      return currentRow;
-    });
-
-    this.board = newBoard;
-
-    const alignmentWasFound = this.searchAlignment(playerId, this.board);
-    if (alignmentWasFound) {
-      this.winner = playerId;
-    }
-  }
-
-  searchAlignment(currentPlayer, board) {
-    const horizontalAlignmentWasFound = this.checkHorizontalAlignments(currentPlayer, board);
-    const verticalAlignmentWasFound = this.checkVerticalAlignments(currentPlayer, board);
-
-    return horizontalAlignmentWasFound || verticalAlignmentWasFound;
-  }
-
-  checkHorizontalAlignments(currentPlayer, board) {
-    const allIndexesRowsOfBoard = [0, 1, 2, 3, 4, 5];
-    const allIndexesColumnsNeededToCheckAlignment = [0, 1, 2, 3];
-
-    const alignmentWasFound = allIndexesRowsOfBoard.some(
-      (startRow) => allIndexesColumnsNeededToCheckAlignment.some(
-        (startColumn) => this.checkAlignment({
-          startColumn,
-          searchedPattern: currentPlayer,
-          array: board[startRow],
-        }),
-      ),
-    );
-
-    return alignmentWasFound;
-  }
-
-  checkVerticalAlignments(currentPlayer, board) {
-    const allIndexesColumnsOfBoard = [0, 1, 2, 3, 4, 5, 6];
-    const allIndexesColumnsNeededToCheckAlignment = [0, 1, 2];
-
-    const alignmentWasFound = allIndexesColumnsOfBoard.some((column) => {
-      const rowsTransformedToColumns = board.map((row) => row[column]);
-
-      return allIndexesColumnsNeededToCheckAlignment.some(
-        (startColumn) => this.checkAlignment({
-          startColumn,
-          searchedPattern: currentPlayer,
-          array: rowsTransformedToColumns,
-        }),
-      );
-    });
-
-    return alignmentWasFound;
-  }
-
-  static checkAlignment({ startColumn, searchedPattern, array }) {
-    if (startColumn < 0 || startColumn > array.length) {
-      return false;
-    }
-
-    const endColumn = startColumn + 3;
-    const goodRange = endColumn <= array.length;
-    if (!goodRange) { return false; }
-
-    for (let currentColumn = startColumn; currentColumn <= endColumn; currentColumn += 1) {
-      const box = array[currentColumn];
-      const isPresent = box === searchedPattern;
-
-      if (!isPresent) { return false; }
-    }
-
-    return true;
-  }
-
+  /** @returns {Array<Array<string|number>>} A copy of the board, bottom row first. */
   getBoard() {
-    return [...this.board];
+    return this.board.map((row) => [...row]);
   }
 
+  /** @returns {string[]} The players, red first. */
+  // eslint-disable-next-line class-methods-use-this
   getPlayers() {
-    return [this.RED_PLAYER_ID, this.YELLOW_PLAYER_ID];
+    return [PLAYER_IDS.RED, PLAYER_IDS.YELLOW];
   }
 
+  /** @returns {Object<string, number>} The number of tokens left, by player. */
   getTokens() {
-    return {
-      [this.RED_PLAYER_ID]: this.nbRedToken,
-      [this.YELLOW_PLAYER_ID]: this.nbYellowToken,
-    };
+    return { ...this.tokens };
   }
 
+  /** @returns {string} The player who made the last move, or `NOBODY`. */
   getLastPlayerWhoPlayed() {
-    const { lastPlayerWhoPlayed } = this;
-
-    return lastPlayerWhoPlayed || 'nobody';
+    return this.lastPlayerWhoPlayed || NOBODY;
   }
 
+  /** @returns {string} The player who won, or `NO_WINNER`. */
   getWinner() {
-    const { winner } = this;
-
-    return winner || 'no winner';
+    return this.winner || NO_WINNER;
   }
 
+  /**
+   * Describes the game for the client.
+   * @returns {{
+   *   players: string[],
+   *   tokens: Object<string, number>,
+   *   lastPlayerWhoPlayed: string,
+   *   winner: string,
+   *   state: string,
+   *   board: Array<Array<string|number>>,
+   * }} The status, with `state` one of `GAME_STATES` and the board top row first.
+   */
   getStatus() {
-    const board = this.getBoard();
-    const players = this.getPlayers();
-    const tokens = this.getTokens();
-    const lastPlayerWhoPlayed = this.getLastPlayerWhoPlayed();
-    const winner = this.getWinner();
-
     return {
-      players,
-      tokens,
-      lastPlayerWhoPlayed,
-      winner,
-      board: board.reverse(),
+      players: this.getPlayers(),
+      tokens: this.getTokens(),
+      lastPlayerWhoPlayed: this.getLastPlayerWhoPlayed(),
+      winner: this.getWinner(),
+      state: this.state,
+      board: this.getBoard().reverse(),
     };
   }
 }
 
-module.exports = new Engine();
+module.exports = Engine;

@@ -1,96 +1,117 @@
 // Dependencies
 const express = require('express');
-
-// Init
-const router = express.Router();
 const Engine = require('../app/engine');
+const GameError = require('../app/GameError');
+const { parsePlayQuery } = require('./utils');
+const { OK_STATUS, BAD_REQUEST_STATUS } = require('./constants');
 
 /**
- * @swagger
- *
- * /game/status:
- *   get:
- *     tags:
- *      - game
- *     description: Get the current state of game
- *     produces:
- *       - application/json
- *     responses:
- *       200:
- *         description: the current state of game
- *         content:
- *            application/json:
- *              example:
- *                players:
- *                  - red
- *                  - yellow
- *                tokens:
- *                  red: 21
- *                  yellow: 21
- *                lastPlayerWhoPlayed: nobody
- *                winner: no winner
- *                board:
- *                  - [ 0, 0, 0, 0, 0, 0, 0]
- *                  - [ 0, 0, 0, 0, 0, 0, 0]
- *                  - [ 0, 0, 0, 0, 0, 0, 0]
- *                  - [ 0, 0, 0, 0, 0, 0, 0]
- *                  - [ 0, 0, 0, 0, 0, 0, 0]
- *                  - [ 0, 0, 0, 0, 0, 0, 0]
+ * Builds the router of the `/game` routes, which reads and plays one game.
+ * @param {object} [params]
+ * @param {Engine} [params.engine] - The game to serve. A new game by default.
+ * @returns {express.Router} The router, to mount on `/game`.
  */
-router.get('/status', (req, res) => {
-  const status = Engine.getStatus();
+const createGameRouter = ({ engine = new Engine() } = {}) => {
+  const router = express.Router();
 
-  res.status(200).json(status);
-});
+  /**
+   * @swagger
+   *
+   * /game/status:
+   *   get:
+   *     tags:
+   *      - game
+   *     description: Get the current state of game
+   *     produces:
+   *       - application/json
+   *     responses:
+   *       200:
+   *         description: the current state of game
+   *         content:
+   *            application/json:
+   *              example:
+   *                players:
+   *                  - red
+   *                  - yellow
+   *                tokens:
+   *                  red: 21
+   *                  yellow: 21
+   *                lastPlayerWhoPlayed: nobody
+   *                winner: no winner
+   *                state: playing
+   *                board:
+   *                  - [ 0, 0, 0, 0, 0, 0, 0]
+   *                  - [ 0, 0, 0, 0, 0, 0, 0]
+   *                  - [ 0, 0, 0, 0, 0, 0, 0]
+   *                  - [ 0, 0, 0, 0, 0, 0, 0]
+   *                  - [ 0, 0, 0, 0, 0, 0, 0]
+   *                  - [ 0, 0, 0, 0, 0, 0, 0]
+   */
+  router.get('/status', (req, res) => {
+    res.status(OK_STATUS).json(engine.getStatus());
+  });
 
-/**
- * @swagger
- *
- * /game/play:
- *   get:
- *     tags:
- *      - game
- *     description: Get the current state of game
- *     produces:
- *       - application/json
- *     parameters:
- *       - name: playerid
- *         description: The player ID.
- *         required: true
- *         type: string
- *       - name: column
- *         description: The column
- *         required: true
- *         type: string
- *     responses:
- *       200:
- *         description: the current state of game
- */
-router.get('/play', (req, res) => {
-  const {
-    query: {
-      playerid,
-      column,
-    } = {},
-  } = req;
+  /**
+   * @swagger
+   *
+   * /game/play:
+   *   get:
+   *     tags:
+   *      - game
+   *     description: Drop a token of a player in a column, then get the new state of game
+   *     produces:
+   *       - application/json
+   *     parameters:
+   *       - name: playerid
+   *         in: query
+   *         description: The player ID.
+   *         required: true
+   *         schema:
+   *           type: string
+   *           enum: [red, yellow]
+   *       - name: column
+   *         in: query
+   *         description: The column, from 1 (left) to 7 (right).
+   *         required: true
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           maximum: 7
+   *     responses:
+   *       200:
+   *         description: the new state of game, with state playing, won or draw
+   *       400:
+   *         description: the move is refused (invalid query, game over, not your turn,
+   *           full column), and the game does not change
+   *         content:
+   *            application/json:
+   *              example:
+   *                message: The column 1 is full!
+   */
+  router.get('/play', (req, res, next) => {
+    const move = parsePlayQuery(req.query);
+    if (move.error) {
+      res.status(BAD_REQUEST_STATUS).json({ message: move.error });
+      return;
+    }
 
-  const queryIsValid = Boolean(playerid && column);
-  if (!queryIsValid) {
-    res.status(400).json({
-      message: 'Your query is wrong!',
-    });
-  }
+    try {
+      engine.play(move);
+    } catch (error) {
+      const isBrokenRule = error instanceof GameError;
+      if (!isBrokenRule) {
+        next(error);
+        return;
+      }
 
-  try {
-    Engine.play(playerid, Number.parseInt(column, 10));
-  } catch (error) {
-    const { message = 'Unknow error' } = error;
-    res.status(400).json({ message });
-  }
+      res.status(BAD_REQUEST_STATUS).json({ message: error.message });
+      return;
+    }
 
-  const status = Engine.getStatus();
+    res.status(OK_STATUS).json(engine.getStatus());
+  });
 
-  res.status(200).json(status);
-});
+  return router;
+};
 
-module.exports = router;
+module.exports = createGameRouter;

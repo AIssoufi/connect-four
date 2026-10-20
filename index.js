@@ -19,11 +19,11 @@ const swaggerOptions = {
 const swaggerSpec = swaggerJSDoc(swaggerOptions);
 
 // Routes
-const routes = require('./routes');
+const createGameRouter = require('./routes');
 
 // MiddleWare
 app.use('/', express.static(`${__dirname}/public`));
-app.use('/game', routes);
+app.use('/game', createGameRouter());
 app.use('/api/v1', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.listen(3000, () => {
