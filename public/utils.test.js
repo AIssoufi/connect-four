@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  getBoardKey, getCellClassName, getColumnNumber, getNextPlayer, getPlayerColorName, isBoardSize,
-  isColumnFull, isDrawableBoard, isGameOver, isGameStatus,
+  getBoardKey, getCellClassName, getColumnTabIndex, getNextColumnIndex, getNextPlayer,
+  getPlayerColorName, getPositionNumber, isBoardSize, isColumnFull, isDrawableBoard, isGameOver,
+  isGameStatus,
 } from './utils.js';
 
 const PLAYERS = ['red', 'yellow'];
@@ -143,19 +144,19 @@ describe('isColumnFull', () => {
   });
 });
 
-describe('getColumnNumber', () => {
-  it('numbers the columns from 1', () => {
-    expect(getColumnNumber(0)).toBe(1);
-    expect(getColumnNumber(6)).toBe(7);
+describe('getPositionNumber', () => {
+  it('numbers the rows and the columns from 1', () => {
+    expect(getPositionNumber(0)).toBe(1);
+    expect(getPositionNumber(6)).toBe(7);
   });
 
   it('returns ? for an index that is not a natural number', () => {
-    expect(getColumnNumber(-1)).toBe('?');
-    expect(getColumnNumber(1.5)).toBe('?');
-    expect(getColumnNumber(NaN)).toBe('?');
-    expect(getColumnNumber('2')).toBe('?');
-    expect(getColumnNumber(undefined)).toBe('?');
-    expect(getColumnNumber(null)).toBe('?');
+    expect(getPositionNumber(-1)).toBe('?');
+    expect(getPositionNumber(1.5)).toBe('?');
+    expect(getPositionNumber(NaN)).toBe('?');
+    expect(getPositionNumber('2')).toBe('?');
+    expect(getPositionNumber(undefined)).toBe('?');
+    expect(getPositionNumber(null)).toBe('?');
   });
 });
 
@@ -185,5 +186,66 @@ describe('getBoardKey', () => {
 
   it('returns an empty key for a missing board', () => {
     expect(getBoardKey(undefined)).toBe('');
+  });
+});
+
+describe('getNextColumnIndex', () => {
+  const columnCount = 7;
+
+  it('moves to the previous and the next column', () => {
+    expect(getNextColumnIndex({ key: 'ArrowLeft', currentIndex: 3, columnCount })).toBe(2);
+    expect(getNextColumnIndex({ key: 'ArrowRight', currentIndex: 3, columnCount })).toBe(4);
+  });
+
+  it('wraps around at both ends', () => {
+    expect(getNextColumnIndex({ key: 'ArrowLeft', currentIndex: 0, columnCount })).toBe(6);
+    expect(getNextColumnIndex({ key: 'ArrowRight', currentIndex: 6, columnCount })).toBe(0);
+  });
+
+  it('jumps to the first and the last column', () => {
+    expect(getNextColumnIndex({ key: 'Home', currentIndex: 4, columnCount })).toBe(0);
+    expect(getNextColumnIndex({ key: 'End', currentIndex: 1, columnCount })).toBe(6);
+  });
+
+  it('ignores the keys that do not move the focus', () => {
+    expect(getNextColumnIndex({ key: 'Enter', currentIndex: 3, columnCount })).toBeNull();
+    expect(getNextColumnIndex({ key: 'ArrowUp', currentIndex: 3, columnCount })).toBeNull();
+    expect(getNextColumnIndex({ key: undefined, currentIndex: 3, columnCount })).toBeNull();
+  });
+
+  it('starts from the first column when the current index is out of range or missing', () => {
+    expect(getNextColumnIndex({ key: 'ArrowRight', currentIndex: 7, columnCount })).toBe(1);
+    expect(getNextColumnIndex({ key: 'ArrowRight', currentIndex: -1, columnCount })).toBe(1);
+    expect(getNextColumnIndex({ key: 'ArrowRight', currentIndex: 1.5, columnCount })).toBe(1);
+    expect(getNextColumnIndex({ key: 'ArrowLeft', currentIndex: undefined, columnCount })).toBe(6);
+  });
+
+  it('stays on a single column', () => {
+    expect(getNextColumnIndex({ key: 'ArrowRight', currentIndex: 0, columnCount: 1 })).toBe(0);
+    expect(getNextColumnIndex({ key: 'ArrowLeft', currentIndex: 0, columnCount: 1 })).toBe(0);
+  });
+
+  it('returns null when there is no column', () => {
+    expect(getNextColumnIndex({ key: 'ArrowRight', currentIndex: 0, columnCount: 0 })).toBeNull();
+    expect(getNextColumnIndex({ key: 'ArrowRight', currentIndex: 0, columnCount: -2 })).toBeNull();
+    expect(getNextColumnIndex({ key: 'ArrowRight', currentIndex: 0, columnCount: NaN })).toBeNull();
+    expect(getNextColumnIndex({ key: 'Home', currentIndex: 0 })).toBeNull();
+  });
+});
+
+describe('getColumnTabIndex', () => {
+  it('lets the Tab key reach the focused column only', () => {
+    expect(getColumnTabIndex({ columnIndex: 0, focusedIndex: 0 })).toBe(0);
+    expect(getColumnTabIndex({ columnIndex: 2, focusedIndex: 2 })).toBe(0);
+    expect(getColumnTabIndex({ columnIndex: 3, focusedIndex: 2 })).toBe(-1);
+  });
+
+  it('skips every column when an index is missing or invalid', () => {
+    expect(getColumnTabIndex({ columnIndex: 0 })).toBe(-1);
+    expect(getColumnTabIndex({})).toBe(-1);
+    expect(getColumnTabIndex({ columnIndex: NaN, focusedIndex: NaN })).toBe(-1);
+    expect(getColumnTabIndex({ columnIndex: 0, focusedIndex: NaN })).toBe(-1);
+    expect(getColumnTabIndex({ columnIndex: -1, focusedIndex: -1 })).toBe(-1);
+    expect(getColumnTabIndex({ columnIndex: 1.5, focusedIndex: 1.5 })).toBe(-1);
   });
 });

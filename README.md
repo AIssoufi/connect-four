@@ -6,7 +6,7 @@ Cloudflare Worker.
 - Play it: <https://connect-four.issoufi.fr>
 - API docs: <https://connect-four.issoufi.fr/api/v1/>
 
-![A game in progress: red and yellow tokens on the blue board, with the row of columns to play above it](docs/screenshot.png)
+![A game in progress: whose turn it is and the Nouvelle partie button above the row of columns to play, then red tokens marked with a dot and yellow tokens marked with a ring on the blue board](docs/screenshot.png)
 
 ## How to play
 
@@ -19,6 +19,15 @@ Above the board, the page says whose turn it is, then who won or that the game i
 shows why a move cannot be played, such as a full column, whose circle is grayed out, or a game
 that is over. Each visitor plays their own game: the Nouvelle partie button, or reloading the
 page, starts a new one.
+
+The page can also be played on a phone, with the keyboard alone and with a screen reader:
+
+- It fits a phone screen of 375 px wide.
+- Keyboard: Tab reaches the columns, the left and right arrows, Home and End move between them,
+  and Enter or Space drops a token.
+- Screen readers announce each column and each cell of the board, such as "Ligne 3, colonne 2 :
+  rouge", and read whose turn it is and the messages as they change.
+- A dot marks the red tokens and a ring the yellow ones, so they are told apart without color.
 
 ## Stack
 

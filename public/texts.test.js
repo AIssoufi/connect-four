@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  fillText, getColumnLabel, getMoveRefusal, getStatusText,
+  fillText, getCellLabel, getColumnLabel, getMoveRefusal, getStatusText,
 } from './texts.js';
 import { DRAW_TEXT, GAME_OVER_MESSAGE } from './constants.js';
 
@@ -99,5 +99,36 @@ describe('getMoveRefusal', () => {
   it('refuses a move in a column outside the board', () => {
     expect(getMoveRefusal({ game: GAME, columnIndex: 3 })).toBe('La colonne 4 est pleine.');
     expect(getMoveRefusal({ game: GAME, columnIndex: undefined })).toBe('La colonne ? est pleine.');
+  });
+});
+
+describe('getCellLabel', () => {
+  it('numbers the row and the column from 1, then names the color of the token', () => {
+    expect(getCellLabel({ rowIndex: 2, columnIndex: 1, token: 'red' }))
+      .toBe('Ligne 3, colonne 2 : rouge');
+  });
+
+  it('labels the corners of the board', () => {
+    expect(getCellLabel({ rowIndex: 0, columnIndex: 0, token: 0 }))
+      .toBe('Ligne 1, colonne 1 : vide');
+    expect(getCellLabel({ rowIndex: 5, columnIndex: 6, token: 'yellow' }))
+      .toBe('Ligne 6, colonne 7 : jaune');
+  });
+
+  it('reads a value that is no known player as an empty cell, as the board draws it', () => {
+    expect(getCellLabel({ rowIndex: 0, columnIndex: 0, token: 'blue' }))
+      .toBe('Ligne 1, colonne 1 : vide');
+    expect(getCellLabel({ rowIndex: 0, columnIndex: 0, token: 'toString' }))
+      .toBe('Ligne 1, colonne 1 : vide');
+    expect(getCellLabel({ rowIndex: 0, columnIndex: 0, token: undefined }))
+      .toBe('Ligne 1, colonne 1 : vide');
+    expect(getCellLabel({ rowIndex: 0, columnIndex: 0, token: null }))
+      .toBe('Ligne 1, colonne 1 : vide');
+  });
+
+  it('writes ? for a missing or invalid row or column', () => {
+    expect(getCellLabel({ token: 'red' })).toBe('Ligne ?, colonne ? : rouge');
+    expect(getCellLabel({ rowIndex: -1, columnIndex: 1.5, token: 'red' }))
+      .toBe('Ligne ?, colonne ? : rouge');
   });
 });
