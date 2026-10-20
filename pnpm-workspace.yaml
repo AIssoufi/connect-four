@@ -1,0 +1,14 @@
+# Only installs versions published at least 7 days ago (in minutes), so a compromised release is
+# usually found and pulled before it can reach the lockfile
+minimumReleaseAge: 10080
+# pnpm itself is pinned on purpose by the packageManager field of package.json: without this
+# exclusion, a local pnpm refuses to switch to a pinned version younger than 7 days
+minimumReleaseAgeExclude:
+  - pnpm
+  - '@pnpm/*'
+# Runs no install script of a dependency unless it is set to true here. Both scripts only check
+# the binary of the optional package for the current platform, which pnpm installs anyway, and
+# download it when that package is missing
+allowBuilds:
+  esbuild: false
+  workerd: false

@@ -1,4 +1,4 @@
-# Lints the API spec with the recommended rules of Redocly: `npm run lint:api`.
+# Lints the API spec with the recommended rules of Redocly: `pnpm lint:api`.
 apis:
   connect-four:
     root: public/api/v1/openapi.yaml

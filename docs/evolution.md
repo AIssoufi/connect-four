@@ -53,3 +53,20 @@ that keeps the rules of Airbnb base, its layout rules coming from ESLint Stylist
 | `npm run lint` | 0.98 s | 0.97 s |
 
 Decision: [0003. Lint with ESLint 10 and a flat configuration](decisions/0003-lint-with-eslint-10-and-a-flat-configuration.md)
+
+## 2026: pnpm
+
+npm installed the dependencies, ran their install scripts and took a release as soon as it was
+published. pnpm 12 now installs them from `pnpm-lock.yaml`, runs no install script, and only
+takes releases published at least 7 days earlier.
+
+| Figure | Before | After |
+| --- | --- | --- |
+| Package manager | npm 12.2.0 | pnpm 12.14.0 |
+| Install, warm cache, no `node_modules` | 2.33 s | 0.71 s |
+| Packages installed, as each tool counts them | 301 | 293 |
+| Install scripts of dependencies run | 2 | 0 |
+| Lint | 1.02 s | 0.82 s |
+| Vulnerabilities of the audit | 0 | 0 |
+
+Decision: [0004. Install the dependencies with pnpm](decisions/0004-install-the-dependencies-with-pnpm.md)
