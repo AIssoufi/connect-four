@@ -6,7 +6,7 @@ Cloudflare Worker.
 - Play it: <https://connect-four.issoufi.fr>
 - API docs: <https://connect-four.issoufi.fr/api/v1/>
 
-![A game in progress: red and yellow tokens on the blue board, with the row of columns to play above it](docs/screenshot.png)
+![A game in progress: whose turn it is and the Nouvelle partie button above the row of columns to play, then red tokens marked with a dot and yellow tokens marked with a ring on the blue board](docs/screenshot.png)
 
 ## How to play
 
