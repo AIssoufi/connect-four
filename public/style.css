@@ -69,11 +69,11 @@ body main .yellow-token, #board .column.yellow-token {
   border-style: dashed;
 }
 
-#control-panel.current-plyer-is-red [class*="token"]:not([aria-disabled="true"]):hover {
+#control-panel.current-player-is-red [class*="token"]:not([aria-disabled="true"]):hover {
   background-color: var(--red-token-color);
 }
 
-#control-panel.current-plyer-is-yellow [class*="token"]:not([aria-disabled="true"]):hover {
+#control-panel.current-player-is-yellow [class*="token"]:not([aria-disabled="true"]):hover {
   background-color: var(--yellow-token-color);
 }
 

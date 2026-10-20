@@ -1,5 +1,5 @@
 import {
-  CELL_CLASS_NAME, EMPTY_CELL, GAME_STATES, PLAYER_COLOR_NAMES, UNKNOWN_COLUMN_NUMBER,
+  CELL_CLASS_NAME, EMPTY_CELL, GAME_STATES, PLAYER_COLOR_NAMES, UNKNOWN_POSITION_NUMBER,
 } from './constants.js';
 
 /**
@@ -106,14 +106,14 @@ export const isColumnFull = ({ board, columnIndex }) => {
 };
 
 /**
- * Turns the index of a column into the number a player reads.
- * @param {number} columnIndex - The index of the column, from 0 for the left one.
+ * Turns the index of a row or a column into the number a player reads.
+ * @param {number} index - The index of the row or the column, from 0 for the top or left one.
  * @returns {number|string} The index plus one, or `?` when the index is not a natural number.
- * @example getColumnNumber(0) // 1
+ * @example getPositionNumber(0) // 1
  */
-export const getColumnNumber = (columnIndex) => {
-  const isValidIndex = Number.isInteger(columnIndex) && columnIndex >= 0;
-  return isValidIndex ? columnIndex + 1 : UNKNOWN_COLUMN_NUMBER;
+export const getPositionNumber = (index) => {
+  const isValidIndex = Number.isInteger(index) && index >= 0;
+  return isValidIndex ? index + 1 : UNKNOWN_POSITION_NUMBER;
 };
 
 /**

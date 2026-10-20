@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  getBoardKey, getCellClassName, getColumnNumber, getNextPlayer, getPlayerColorName, isBoardSize,
+  getBoardKey, getCellClassName, getPositionNumber, getNextPlayer, getPlayerColorName, isBoardSize,
   isColumnFull, isDrawableBoard, isGameOver, isGameStatus,
 } from './utils.js';
 
@@ -143,19 +143,19 @@ describe('isColumnFull', () => {
   });
 });
 
-describe('getColumnNumber', () => {
-  it('numbers the columns from 1', () => {
-    expect(getColumnNumber(0)).toBe(1);
-    expect(getColumnNumber(6)).toBe(7);
+describe('getPositionNumber', () => {
+  it('numbers the rows and the columns from 1', () => {
+    expect(getPositionNumber(0)).toBe(1);
+    expect(getPositionNumber(6)).toBe(7);
   });
 
   it('returns ? for an index that is not a natural number', () => {
-    expect(getColumnNumber(-1)).toBe('?');
-    expect(getColumnNumber(1.5)).toBe('?');
-    expect(getColumnNumber(NaN)).toBe('?');
-    expect(getColumnNumber('2')).toBe('?');
-    expect(getColumnNumber(undefined)).toBe('?');
-    expect(getColumnNumber(null)).toBe('?');
+    expect(getPositionNumber(-1)).toBe('?');
+    expect(getPositionNumber(1.5)).toBe('?');
+    expect(getPositionNumber(NaN)).toBe('?');
+    expect(getPositionNumber('2')).toBe('?');
+    expect(getPositionNumber(undefined)).toBe('?');
+    expect(getPositionNumber(null)).toBe('?');
   });
 });
 

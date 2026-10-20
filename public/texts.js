@@ -3,7 +3,7 @@ import {
   TURN_TEXT, WIN_TEXT,
 } from './constants.js';
 import {
-  getColumnNumber, getNextPlayer, getPlayerColorName, isColumnFull, isGameOver,
+  getPositionNumber, getNextPlayer, getPlayerColorName, isColumnFull, isGameOver,
 } from './utils.js';
 
 /** Matches a placeholder of a text template, such as `{color}`, and captures its name. */
@@ -71,7 +71,7 @@ export const getStatusText = (game) => {
  */
 export const getColumnLabel = ({ columnIndex, isFull }) => {
   const template = isFull ? FULL_COLUMN_LABEL : COLUMN_LABEL;
-  return fillText({ template, values: { number: getColumnNumber(columnIndex) } });
+  return fillText({ template, values: { number: getPositionNumber(columnIndex) } });
 };
 
 /**
@@ -90,7 +90,7 @@ export const getMoveRefusal = ({ game, columnIndex }) => {
   if (isColumnFull({ board: game.board, columnIndex })) {
     return fillText({
       template: FULL_COLUMN_MESSAGE,
-      values: { number: getColumnNumber(columnIndex) },
+      values: { number: getPositionNumber(columnIndex) },
     });
   }
 

@@ -4,7 +4,7 @@ import {
 import { getPlayRoute, requestGame } from './api.js';
 import { getColumnLabel, getMoveRefusal, getStatusText } from './texts.js';
 import {
-  getBoardKey, getCellClassName, getColumnNumber, getNextPlayer, isBoardSize, isColumnFull,
+  getBoardKey, getCellClassName, getPositionNumber, getNextPlayer, isBoardSize, isColumnFull,
   isGameOver,
 } from './utils.js';
 
@@ -119,7 +119,7 @@ const renderControlPanel = (game) => {
   const isOver = isGameOver(game);
   const nextPlayer = getNextPlayer(game);
   const canPlay = !isOver && nextPlayer !== null;
-  panelElem.className = canPlay ? `current-plyer-is-${nextPlayer}` : '';
+  panelElem.className = canPlay ? `current-player-is-${nextPlayer}` : '';
   panelElem.setAttribute('aria-disabled', String(!canPlay));
 
   Array.from(panelElem.children).forEach((pickerElem, columnIndex) => {
@@ -197,7 +197,7 @@ const onControlPanelClick = (event) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         playerId: getNextPlayer(currentGame),
-        column: getColumnNumber(columnIndex),
+        column: getPositionNumber(columnIndex),
       }),
     },
   });

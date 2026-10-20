@@ -14,8 +14,8 @@ export const GAME_STATES = {
 /** The value of a board cell that holds no token: the `EMPTY_CELL` of `app/constants.js`. */
 export const EMPTY_CELL = 0;
 
-/** What stands for a column number that is missing or invalid. */
-export const UNKNOWN_COLUMN_NUMBER = '?';
+/** What stands for a row or column number that is missing or invalid. */
+export const UNKNOWN_POSITION_NUMBER = '?';
 
 /** The selectors of the elements of the page that the script updates. */
 export const SELECTORS = {
