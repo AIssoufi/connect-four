@@ -1,7 +1,34 @@
-## Play
+# Connect Four
 
-Once deployed (see [Deploy](#deploy)), the game runs at <https://connect-four.issoufi.fr>. Each
-visitor plays their own game, and reloading the page starts a new one.
+A two-player Connect Four game in the browser, played through a small REST API that runs on a
+Cloudflare Worker.
+
+- Play it: <https://connect-four.issoufi.fr>
+- API docs: <https://connect-four.issoufi.fr/api/v1/>
+
+![A game in progress: red and yellow tokens on the blue board, with the row of columns to play above it](docs/screenshot.png)
+
+## How to play
+
+Two players share the same screen and take turns, red first. Click one of the seven dashed
+circles above the board to drop a token of the current player in that column: it falls to the
+lowest free cell. The first player who aligns four tokens, in a row, a column or a diagonal,
+wins. When the 42 cells are full with no alignment, the game is a draw.
+
+Each visitor plays their own game, and reloading the page starts a new one.
+
+## Stack
+
+- [Express 5](https://expressjs.com/) serves the API, on a
+  [Cloudflare Worker](https://developers.cloudflare.com/workers/) with the `nodejs_compat` flag.
+- Each game lives in its own [Durable Object](https://developers.cloudflare.com/durable-objects/),
+  which deletes it 7 days after its start or its last move.
+- A rate limit lets each IP address start 20 games a minute.
+- The page is plain HTML, CSS and JavaScript, with no build step.
+- [Vitest](https://vitest.dev/) runs the tests, ESLint and Redocly CLI lint the code and the
+  OpenAPI document, and GitHub Actions runs them on every pull request.
+
+[docs/decisions/](docs/decisions/) records why, one decision per file.
 
 ## API docs
 
@@ -52,14 +79,14 @@ npm run dev
 `npm run dev` runs the Worker, its files and its Durable Objects with `wrangler dev`, at
 <http://localhost:8787> by default, and keeps the games in `.wrangler/`.
 
-<img src="https://gitlab.com/issoufi/puissance-4/raw/master/screenshots/screenshot2.png" alt="UI">
-
 ## Deploy
 
-`npm run deploy` deploys the Worker with `wrangler deploy`, on the custom domain
-`connect-four.issoufi.fr`. It needs a Cloudflare account that holds the `issoufi.fr` zone: log in
-with `npx wrangler login`, or set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The Worker
-needs no build step, no variable and no secret.
+[Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) deploys `master` on
+Cloudflare after each merge, on the custom domain `connect-four.issoufi.fr`.
+
+`npm run deploy` deploys the Worker by hand with `wrangler deploy`. It needs a Cloudflare account
+that holds the `issoufi.fr` zone: log in with `npx wrangler login`, or set `CLOUDFLARE_API_TOKEN`
+and `CLOUDFLARE_ACCOUNT_ID`. The Worker needs no build step, no variable and no secret.
 
 ## Run the tests
 
@@ -123,7 +150,3 @@ Co-Authored-By: …
 
 [docs/evolution.md](docs/evolution.md) tells how the stack changed, with figures, and
 [docs/decisions/](docs/decisions/) keeps one record per decision.
-
-## Vidéo de démonstration
-
-[![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/T-oEjFyau7A/0.jpg)](http://www.youtube.com/watch?v=T-oEjFyau7A)
