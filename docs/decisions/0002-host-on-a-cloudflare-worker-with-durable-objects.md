@@ -36,6 +36,8 @@ For [#13](https://github.com/AIssoufi/connect-four/issues/13):
   the storage.
 - An alarm of the object deletes its game 7 days after its start or its last move, so the games
   of past visitors do not stay stored; its id then returns 404.
+- Each IP address, read from `CF-Connecting-IP`, may start 20 games a minute, counted by the
+  Rate Limiting binding `GAME_START_LIMITER`; beyond, `POST /game` returns 429.
 - The API changes its contract: `POST /game` starts a game and returns its id,
   `GET /game/{gameId}/status` reads it, and `POST /game/{gameId}/play` plays a move given as a
   JSON body, `{ "playerId": "red", "column": 1 }`. An unknown game or route returns 404, a refused

@@ -5,7 +5,7 @@ import { createTestHarness } from 'wrangler';
 import Engine from './app/engine';
 import { DRAW_MOVES, RED_WINS_MOVES, readMoves } from './app/testMoves';
 import {
-  OK_STATUS, CREATED_STATUS, BAD_REQUEST_STATUS, NOT_FOUND_STATUS,
+  OK_STATUS, CREATED_STATUS, BAD_REQUEST_STATUS, NOT_FOUND_STATUS, TOO_MANY_REQUESTS_STATUS,
 } from './routes/constants';
 import { GAME_ID_LENGTH, GAME_ID_PATTERN } from './worker/constants';
 
@@ -14,6 +14,11 @@ const WORKER_START_TIMEOUT_MS = 60000;
 const NEW_GAME_STATUS = new Engine().getStatus();
 const TEMPORARY_REDIRECT_STATUS = 307;
 const GAME_NOT_FOUND = { status: NOT_FOUND_STATUS, body: { message: 'No game has this id.' } };
+/**
+ * The `limit` of `GAME_START_LIMITER` in `wrangler.jsonc`: the starts of one IP address per
+ * minute. The tests that send no address share the one of the harness: keep their starts below.
+ */
+const STARTS_PER_MINUTE = 20;
 
 // Runs the Worker of `wrangler.jsonc` in the local Workers runtime, with its static assets and
 // its Durable Objects, as `wrangler dev` does.
@@ -33,7 +38,14 @@ describe('the Worker', () => {
     return { status: response.status, body: await response.json() };
   };
 
-  const startGame = async () => (await call({ route: '/game', init: { method: 'POST' } })).body;
+  /**
+   * Starts a game through the Worker.
+   * @param {object} [headers] - The headers of the request, none by default.
+   * @returns {Promise<{ status: number, body: object }>} The response.
+   */
+  const postGame = (headers) => call({ route: '/game', init: { method: 'POST', headers } });
+
+  const startGame = async () => (await postGame()).body;
 
   const play = ({ gameId, move }) => call({
     route: `/game/${gameId}/play`,
@@ -81,7 +93,7 @@ describe('the Worker', () => {
   });
 
   it('starts a game in a Durable Object', async () => {
-    const { status, body } = await call({ route: '/game', init: { method: 'POST' } });
+    const { status, body } = await postGame();
 
     expect(status).toBe(CREATED_STATUS);
     expect(body).toEqual({ id: expect.stringMatching(GAME_ID_PATTERN), ...NEW_GAME_STATUS });
@@ -140,6 +152,24 @@ describe('the Worker', () => {
     expect(await getStatus(id)).toEqual(GAME_NOT_FOUND);
     expect(await play({ gameId: id, move: { playerId: 'yellow', column: 4 } }))
       .toEqual(GAME_NOT_FOUND);
+  });
+
+  it('refuses with 429 the starts of one IP address over the limit, and only of it', async () => {
+    const limitedHeaders = { 'CF-Connecting-IP': '203.0.113.7' };
+
+    const allowedStarts = await Promise.all(
+      Array.from({ length: STARTS_PER_MINUTE }, () => postGame(limitedHeaders)),
+    );
+    const refusedStart = await postGame(limitedHeaders);
+    const otherStart = await postGame({ 'CF-Connecting-IP': '203.0.113.8' });
+
+    expect(allowedStarts.map(({ status }) => status))
+      .toEqual(Array(STARTS_PER_MINUTE).fill(CREATED_STATUS));
+    expect(refusedStart).toEqual({
+      status: TOO_MANY_REQUESTS_STATUS,
+      body: { message: 'Too many games started from this address: try again later.' },
+    });
+    expect(otherStart.status).toBe(CREATED_STATUS);
   });
 
   it('refuses an invalid move without playing it', async () => {

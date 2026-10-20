@@ -43,4 +43,29 @@ const isExposedClientError = (error) => {
   return isExposed && isClientErrorStatus;
 };
 
-module.exports = { parseMove, isExposedClientError };
+/**
+ * Tells whether a visitor may start one more game, under the Rate Limiting binding of the
+ * Worker, which counts the starts of each IP address.
+ * @param {object} params
+ * @param {{ limit: (options: { key: string }) => Promise<{ success: boolean }> } | undefined}
+ *   params.limiter - The Rate Limiting binding, `undefined` when the app runs without it.
+ * @param {string | undefined} params.clientIp - The IP address of the visitor, `undefined` when
+ *   the request has none.
+ * @returns {Promise<boolean>} Whether the limit allows the start. Without a binding or an
+ * address to count by, as in some local runs, every start is allowed.
+ * @example
+ * await isStartAllowed({ limiter: env.GAME_START_LIMITER, clientIp: '203.0.113.7' }); // true
+ */
+const isStartAllowed = async ({ limiter, clientIp }) => {
+  const hasClientIp = typeof clientIp === 'string' && clientIp !== '';
+  const canLimit = Boolean(limiter) && hasClientIp;
+  if (!canLimit) {
+    return true;
+  }
+
+  const { success } = await limiter.limit({ key: clientIp });
+
+  return success;
+};
+
+module.exports = { parseMove, isExposedClientError, isStartAllowed };

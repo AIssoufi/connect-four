@@ -25,7 +25,9 @@ paths:
         - game
       operationId: startGame
       summary: Start a new game
-      description: Starts an empty game, which only its id gives access to.
+      description: >-
+        Starts an empty game, which only its id gives access to. Each IP address may start 20
+        games a minute.
       responses:
         '201':
           description: The new game, where red plays first.
@@ -43,6 +45,17 @@ paths:
               examples:
                 newGame:
                   $ref: '#/components/examples/NewGame'
+        '429':
+          description: This IP address started too many games in the last minute.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                tooManyStarts:
+                  summary: A start over the limit
+                  value:
+                    message: 'Too many games started from this address: try again later.'
         '500':
           $ref: '#/components/responses/ServerError'
   /game/{gameId}/status:

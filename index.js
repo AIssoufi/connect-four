@@ -6,7 +6,10 @@ import createApp from './routes/createApp';
 import createGameStore from './worker/createGameStore';
 import { SERVER_PORT } from './worker/constants';
 
-const app = createApp({ games: createGameStore({ namespace: env.GAMES }) });
+const app = createApp({
+  games: createGameStore({ namespace: env.GAMES }),
+  startLimiter: env.GAME_START_LIMITER,
+});
 app.listen(SERVER_PORT);
 
 export { default as Game } from './worker/Game';

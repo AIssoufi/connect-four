@@ -11,7 +11,8 @@ visitor plays their own game, and reloading the page starts a new one.
 ## Game API
 
 - `POST /game` starts a game. It returns `201` with the game, whose `id` the other routes take,
-  and a `Location` header to read it.
+  and a `Location` header to read it. Each IP address may start 20 games a minute: beyond, it
+  returns `429 { "message": "..." }`.
 - `GET /game/{gameId}/status` returns the game: its `id`, the `players`, the `tokens` left,
   `lastPlayerWhoPlayed`, `winner` (`no winner` until a player aligns four tokens), `state`
   (`playing`, `won` or `draw`) and the `board`, top row first.
@@ -35,6 +36,8 @@ The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), d
   (`worker/Game.js`), which saves its moves and plays them again in the engine of `app/` when it
   wakes up. The engine does not depend on Express or on Cloudflare. An alarm of the Durable
   Object deletes the game 7 days after its start or its last move.
+- The [Rate Limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
+  `GAME_START_LIMITER` counts the games that each IP address starts.
 
 [docs/decisions/0002](docs/decisions/0002-host-on-a-cloudflare-worker-with-durable-objects.md)
 explains these choices.

@@ -1,5 +1,5 @@
 import {
-  describe, it, expect, beforeEach, afterEach,
+  describe, it, expect, beforeEach, afterEach, vi,
 } from 'vitest';
 import createApp from './createApp';
 import listen from './testServer';
@@ -8,15 +8,18 @@ import { createFakeGameNamespace } from '../worker/testDoubles';
 import Engine from '../app/engine';
 import { RED_WINS_MOVES, readMoves } from '../app/testMoves';
 import {
-  OK_STATUS, CREATED_STATUS, BAD_REQUEST_STATUS, NOT_FOUND_STATUS,
+  OK_STATUS, CREATED_STATUS, BAD_REQUEST_STATUS, NOT_FOUND_STATUS, TOO_MANY_REQUESTS_STATUS,
 } from './constants';
 import { GAME_ID_LENGTH, GAME_ID_PATTERN } from '../worker/constants';
 
 const NEW_GAME_STATUS = new Engine().getStatus();
 const GAME_NOT_FOUND = { message: 'No game has this id.' };
+const CLIENT_IP = '203.0.113.7';
 
 describe('game routes', () => {
   let server;
+  let games;
+  let startLimiter;
 
   /**
    * Calls the API and reads its JSON answer.
@@ -31,7 +34,14 @@ describe('game routes', () => {
     return { status: response.status, body: await response.json(), headers: response.headers };
   };
 
-  const startGame = async () => (await call({ route: '/game', init: { method: 'POST' } })).body;
+  /**
+   * Starts a game through the API.
+   * @param {object} [headers] - The headers of the request, none by default.
+   * @returns {Promise<{ status: number, body: object, headers: Headers }>} The response.
+   */
+  const postGame = (headers) => call({ route: '/game', init: { method: 'POST', headers } });
+
+  const startGame = async () => (await postGame()).body;
 
   /**
    * Plays one move through the API.
@@ -51,18 +61,51 @@ describe('game routes', () => {
   const getStatus = (gameId) => call({ route: `/game/${gameId}/status` });
 
   beforeEach(async () => {
-    const games = createGameStore({ namespace: createFakeGameNamespace() });
-    server = await listen(createApp({ games }));
+    games = createGameStore({ namespace: createFakeGameNamespace() });
+    startLimiter = { limit: vi.fn(async () => ({ success: true })) };
+    server = await listen(createApp({ games, startLimiter }));
   });
 
   afterEach(() => server.close());
 
   it('starts a game and gives its id, its status and where to read it', async () => {
-    const { status, body, headers } = await call({ route: '/game', init: { method: 'POST' } });
+    const { status, body, headers } = await postGame();
 
     expect(status).toBe(CREATED_STATUS);
     expect(body).toEqual({ id: expect.stringMatching(GAME_ID_PATTERN), ...NEW_GAME_STATUS });
     expect(headers.get('Location')).toBe(`/game/${body.id}/status`);
+  });
+
+  describe('start limit', () => {
+    it('counts each start by the CF-Connecting-IP address of the visitor', async () => {
+      await postGame({ 'CF-Connecting-IP': CLIENT_IP });
+
+      expect(startLimiter.limit).toHaveBeenCalledWith({ key: CLIENT_IP });
+    });
+
+    it('refuses a start over the limit with 429, without starting a game', async () => {
+      startLimiter.limit.mockResolvedValueOnce({ success: false });
+      const create = vi.spyOn(games, 'create');
+
+      const response = await postGame({ 'CF-Connecting-IP': CLIENT_IP });
+
+      expect(response).toMatchObject({
+        status: TOO_MANY_REQUESTS_STATUS,
+        body: { message: 'Too many games started from this address: try again later.' },
+      });
+      expect(create).not.toHaveBeenCalled();
+    });
+
+    it('limits neither the reads nor the moves', async () => {
+      const { id } = await startGame();
+      startLimiter.limit.mockResolvedValue({ success: false });
+
+      const statusResponse = await getStatus(id);
+      const playResponse = await play({ gameId: id, move: { playerId: 'red', column: 1 } });
+
+      expect(statusResponse.status).toBe(OK_STATUS);
+      expect(playResponse.status).toBe(OK_STATUS);
+    });
   });
 
   it('gives the status of a game', async () => {

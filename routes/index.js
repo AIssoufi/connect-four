@@ -1,12 +1,15 @@
 // Dependencies
 const express = require('express');
-const { parseMove } = require('./utils');
+const { parseMove, isStartAllowed } = require('./utils');
 const {
   OK_STATUS,
   CREATED_STATUS,
   BAD_REQUEST_STATUS,
   NOT_FOUND_STATUS,
+  TOO_MANY_REQUESTS_STATUS,
   GAME_NOT_FOUND_MESSAGE,
+  TOO_MANY_STARTS_MESSAGE,
+  CLIENT_IP_HEADER,
 } = require('./constants');
 
 /**
@@ -14,12 +17,23 @@ const {
  * `public/api/v1/openapi.yaml` documents these routes: keep both in step.
  * @param {object} params
  * @param {import('../worker/createGameStore').GameStore} params.games - The games to serve.
+ * @param {object} [params.startLimiter] - The Rate Limiting binding that limits the games each
+ *   visitor starts. See `isStartAllowed()`.
  * @returns {express.Router} The router, to mount on `/game`.
  */
-const createGameRouter = ({ games }) => {
+const createGameRouter = ({ games, startLimiter }) => {
   const router = express.Router();
 
   router.post('/', async (req, res) => {
+    const isAllowed = await isStartAllowed({
+      limiter: startLimiter,
+      clientIp: req.get(CLIENT_IP_HEADER),
+    });
+    if (!isAllowed) {
+      res.status(TOO_MANY_REQUESTS_STATUS).json({ message: TOO_MANY_STARTS_MESSAGE });
+      return;
+    }
+
     const { gameId, status } = await games.create();
 
     res.status(CREATED_STATUS)

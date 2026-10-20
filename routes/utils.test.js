@@ -1,5 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { parseMove, isExposedClientError } from './utils';
+import {
+  describe, it, expect, vi,
+} from 'vitest';
+import { parseMove, isExposedClientError, isStartAllowed } from './utils';
 
 const BODY_ERROR = { error: 'The body must be a JSON object with a playerId and a column.' };
 const PLAYER_ERROR = { error: 'The playerId must be one of: red, yellow.' };
@@ -77,5 +79,54 @@ describe('isExposedClientError', () => {
     ['a NaN status', { expose: true, status: Number.NaN }],
   ])('refuses %s', (_case, error) => {
     expect(isExposedClientError(error)).toBe(false);
+  });
+});
+
+describe('isStartAllowed', () => {
+  const CLIENT_IP = '203.0.113.7';
+
+  /**
+   * Builds a fake Rate Limiting binding that answers the same verdict to every call.
+   * @param {boolean} success - Whether the limit allows the call.
+   * @returns {{ limit: Function }} The binding.
+   */
+  const createLimiter = (success) => ({ limit: vi.fn(async () => ({ success })) });
+
+  it('allows a start that the limit allows, counted by the IP address', async () => {
+    const limiter = createLimiter(true);
+
+    expect(await isStartAllowed({ limiter, clientIp: CLIENT_IP })).toBe(true);
+    expect(limiter.limit).toHaveBeenCalledWith({ key: CLIENT_IP });
+  });
+
+  it('refuses a start that the limit refuses', async () => {
+    const limiter = createLimiter(false);
+
+    expect(await isStartAllowed({ limiter, clientIp: CLIENT_IP })).toBe(false);
+  });
+
+  it.each([
+    ['undefined', undefined],
+    ['null', null],
+  ])('allows every start without a binding: %s', async (_case, limiter) => {
+    expect(await isStartAllowed({ limiter, clientIp: CLIENT_IP })).toBe(true);
+  });
+
+  it.each([
+    ['no address', undefined],
+    ['an empty address', ''],
+    ['a list of addresses', [CLIENT_IP]],
+  ])('allows a start with %s, without counting it', async (_case, clientIp) => {
+    const limiter = createLimiter(false);
+
+    expect(await isStartAllowed({ limiter, clientIp })).toBe(true);
+    expect(limiter.limit).not.toHaveBeenCalled();
+  });
+
+  it('passes on a failure of the binding', async () => {
+    const limitError = new Error('Rate limit unavailable');
+    const limiter = { limit: vi.fn(async () => { throw limitError; }) };
+
+    await expect(isStartAllowed({ limiter, clientIp: CLIENT_IP })).rejects.toThrow(limitError);
   });
 });

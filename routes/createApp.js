@@ -15,13 +15,15 @@ const {
  * `public/` before any request reaches this app.
  * @param {object} params
  * @param {import('../worker/createGameStore').GameStore} params.games - The games to serve.
+ * @param {object} [params.startLimiter] - The Rate Limiting binding that limits the games each
+ *   visitor starts. Without it, starts are not limited.
  * @returns {express.Express} The app, ready to listen.
  */
-const createApp = ({ games }) => {
+const createApp = ({ games, startLimiter }) => {
   const app = express();
   app.disable('x-powered-by');
 
-  app.use('/game', createGameRouter({ games }));
+  app.use('/game', createGameRouter({ games, startLimiter }));
 
   app.use((req, res) => {
     res.status(NOT_FOUND_STATUS).json({ message: ROUTE_NOT_FOUND_MESSAGE });
