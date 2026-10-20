@@ -1,0 +1,9 @@
+# Lints the API spec with the recommended rules of Redocly: `npm run lint:api`.
+apis:
+  connect-four:
+    root: public/api/v1/openapi.yaml
+# Turns every warning of the recommended rules into an error, so the CI fails on it.
+extends:
+  - recommended-strict
+# Sends no usage data to Redocly when the linter runs.
+telemetry: off

@@ -1,142 +1,192 @@
 import {
-  describe, it, expect, beforeEach, afterEach,
+  describe, it, expect, beforeEach, afterEach, vi,
 } from 'vitest';
-import express from 'express';
-import createGameRouter from './index';
+import createApp from './createApp';
+import listen from './testServer';
+import createGameStore from '../worker/createGameStore';
+import { createFakeGameNamespace } from '../worker/testDoubles';
 import Engine from '../app/engine';
-import { OK_STATUS, BAD_REQUEST_STATUS } from './constants';
+import { RED_WINS_MOVES, readMoves } from '../app/testMoves';
+import {
+  OK_STATUS, CREATED_STATUS, BAD_REQUEST_STATUS, NOT_FOUND_STATUS, TOO_MANY_REQUESTS_STATUS,
+} from './constants';
+import { GAME_ID_LENGTH, GAME_ID_PATTERN } from '../worker/constants';
 
-const SERVER_ERROR_STATUS = 500;
-/** Port 0 lets the system pick a free port. */
-const ANY_FREE_PORT = 0;
+const NEW_GAME_STATUS = new Engine().getStatus();
+const GAME_NOT_FOUND = { message: 'No game has this id.' };
+const CLIENT_IP = '203.0.113.7';
 
 describe('game routes', () => {
   let server;
-  let baseUrl;
-  let routeErrors;
+  let games;
+  let startLimiter;
 
   /**
-   * Serves the game routes on a free port, and records the errors they pass on.
-   * @param {object} [routerParams] - The params of `createGameRouter`.
+   * Calls the API and reads its JSON answer.
+   * @param {object} params
+   * @param {string} params.route - The path, from `/game` on.
+   * @param {RequestInit} [params.init] - The method, the headers and the body.
+   * @returns {Promise<{ status: number, body: object, headers: Headers }>} The response.
    */
-  const startServer = async (routerParams) => {
-    const app = express();
-    app.use('/game', createGameRouter(routerParams));
-    // eslint-disable-next-line no-unused-vars
-    app.use((error, req, res, next) => {
-      routeErrors.push(error);
-      if (!res.headersSent) res.status(SERVER_ERROR_STATUS).json({ message: 'Server error' });
-    });
+  const call = async ({ route, init }) => {
+    const response = await fetch(`${server.baseUrl}${route}`, init);
 
-    await new Promise((resolve) => {
-      server = app.listen(ANY_FREE_PORT, resolve);
-    });
-    baseUrl = `http://localhost:${server.address().port}/game`;
+    return { status: response.status, body: await response.json(), headers: response.headers };
   };
+
+  /**
+   * Starts a game through the API.
+   * @param {object} [headers] - The headers of the request, none by default.
+   * @returns {Promise<{ status: number, body: object, headers: Headers }>} The response.
+   */
+  const postGame = (headers) => call({ route: '/game', init: { method: 'POST', headers } });
+
+  const startGame = async () => (await postGame()).body;
 
   /**
    * Plays one move through the API.
-   * @param {string} [query] - The query string, without `?`.
+   * @param {object} params
+   * @param {string} params.gameId - The game to play.
+   * @param {string} params.body - The raw body of the request.
+   * @param {string} [params.contentType] - The type of the body, JSON by default.
    * @returns {Promise<{ status: number, body: object }>} The response.
    */
-  const play = async (query = '') => {
-    const response = await fetch(`${baseUrl}/play?${query}`);
-
-    return { status: response.status, body: await response.json() };
-  };
-
-  beforeEach(() => {
-    routeErrors = [];
+  const postMove = ({ gameId, body, contentType = 'application/json' }) => call({
+    route: `/game/${gameId}/play`,
+    init: { method: 'POST', headers: { 'Content-Type': contentType }, body },
   });
 
-  afterEach(async () => {
-    await new Promise((resolve) => server.close(resolve));
-    // A second response of the same request fails after the first one is sent.
-    expect(routeErrors).toEqual([]);
+  const play = ({ gameId, move }) => postMove({ gameId, body: JSON.stringify(move) });
+
+  const getStatus = (gameId) => call({ route: `/game/${gameId}/status` });
+
+  beforeEach(async () => {
+    games = createGameStore({ namespace: createFakeGameNamespace() });
+    startLimiter = { limit: vi.fn(async () => ({ success: true })) };
+    server = await listen(createApp({ games, startLimiter }));
   });
 
-  describe('with a game', () => {
-    beforeEach(() => startServer());
+  afterEach(() => server.close());
 
-    it('gives the status of a new game', async () => {
-      const response = await fetch(`${baseUrl}/status`);
+  it('starts a game and gives its id, its status and where to read it', async () => {
+    const { status, body, headers } = await postGame();
 
-      expect(response.status).toBe(OK_STATUS);
-      expect(await response.json()).toMatchObject({ state: 'playing', winner: 'no winner' });
+    expect(status).toBe(CREATED_STATUS);
+    expect(body).toEqual({ id: expect.stringMatching(GAME_ID_PATTERN), ...NEW_GAME_STATUS });
+    expect(headers.get('Location')).toBe(`/game/${body.id}/status`);
+  });
+
+  describe('start limit', () => {
+    it('counts each start by the CF-Connecting-IP address of the visitor', async () => {
+      await postGame({ 'CF-Connecting-IP': CLIENT_IP });
+
+      expect(startLimiter.limit).toHaveBeenCalledWith({ key: CLIENT_IP });
     });
 
-    it('plays a move and returns the new status', async () => {
-      const { status, body } = await play('playerid=red&column=1');
+    it('refuses a start over the limit with 429, without starting a game', async () => {
+      startLimiter.limit.mockResolvedValueOnce({ success: false });
+      const create = vi.spyOn(games, 'create');
 
-      expect(status).toBe(OK_STATUS);
-      expect(body).toMatchObject({ lastPlayerWhoPlayed: 'red', tokens: { red: 20, yellow: 21 } });
-      expect(body.board[5][0]).toBe('red');
+      const response = await postGame({ 'CF-Connecting-IP': CLIENT_IP });
+
+      expect(response).toMatchObject({
+        status: TOO_MANY_REQUESTS_STATUS,
+        body: { message: 'Too many games started from this address: try again later.' },
+      });
+      expect(create).not.toHaveBeenCalled();
     });
 
-    it('sets the winner on a winning move', async () => {
-      const queries = [
-        'playerid=red&column=1', 'playerid=yellow&column=2',
-        'playerid=red&column=1', 'playerid=yellow&column=2',
-        'playerid=red&column=1', 'playerid=yellow&column=2',
-      ];
-      // The moves must run one after the other, in order.
-      await queries.reduce(
-        (previous, query) => previous.then(() => play(query)),
-        Promise.resolve(),
-      );
+    it('limits neither the reads nor the moves', async () => {
+      const { id } = await startGame();
+      startLimiter.limit.mockResolvedValue({ success: false });
 
-      const { status, body } = await play('playerid=red&column=1');
+      const statusResponse = await getStatus(id);
+      const playResponse = await play({ gameId: id, move: { playerId: 'red', column: 1 } });
 
-      expect(status).toBe(OK_STATUS);
-      expect(body).toMatchObject({ winner: 'red', state: 'won' });
-    });
-
-    it.each([
-      ['no query', ''],
-      ['an unknown player', 'playerid=green&column=1'],
-      ['a column with letters', 'playerid=red&column=abc'],
-      ['digits then letters', 'playerid=red&column=7abc'],
-      ['a decimal column', 'playerid=red&column=2.5'],
-      ['a column out of the board', 'playerid=red&column=8'],
-      ['a repeated column', 'playerid=red&column=1&column=2'],
-    ])('refuses %s without playing', async (_case, query) => {
-      const { status, body } = await play(query);
-      const statusAfter = await (await fetch(`${baseUrl}/status`)).json();
-
-      expect(status).toBe(BAD_REQUEST_STATUS);
-      expect(body.message).toMatch(/must be/);
-      expect(statusAfter).toEqual(new Engine().getStatus());
-    });
-
-    it('refuses a move that breaks a rule with its message', async () => {
-      await play('playerid=red&column=1');
-
-      const { status, body } = await play('playerid=red&column=2');
-
-      expect(status).toBe(BAD_REQUEST_STATUS);
-      expect(body).toEqual({ message: "red: it's not your turn!" });
+      expect(statusResponse.status).toBe(OK_STATUS);
+      expect(playResponse.status).toBe(OK_STATUS);
     });
   });
 
-  it('passes an unexpected error on instead of answering 400', async () => {
-    const engine = new Engine();
-    engine.play = () => { throw new TypeError('Unexpected'); };
-    await startServer({ engine });
+  it('gives the status of a game', async () => {
+    const { id } = await startGame();
 
-    const { status } = await play('playerid=red&column=1');
+    const { status, body } = await getStatus(id);
 
-    expect(status).toBe(SERVER_ERROR_STATUS);
-    expect(routeErrors).toEqual([new TypeError('Unexpected')]);
-    routeErrors = [];
+    expect(status).toBe(OK_STATUS);
+    expect(body).toEqual({ id, ...NEW_GAME_STATUS });
   });
 
-  it('serves the game it is given', async () => {
-    const engine = new Engine();
-    engine.play({ playerId: 'yellow', column: 4 });
-    await startServer({ engine });
+  it('plays a move and returns the new status', async () => {
+    const { id } = await startGame();
 
-    const response = await fetch(`${baseUrl}/status`);
+    const { status, body } = await play({ gameId: id, move: { playerId: 'red', column: 1 } });
 
-    expect((await response.json()).lastPlayerWhoPlayed).toBe('yellow');
+    expect(status).toBe(OK_STATUS);
+    expect(body).toMatchObject({ id, lastPlayerWhoPlayed: 'red', tokens: { red: 20, yellow: 21 } });
+    expect(body.board[5][0]).toBe('red');
+    expect((await getStatus(id)).body).toEqual(body);
+  });
+
+  it('sets the winner on a winning move', async () => {
+    const { id } = await startGame();
+    const moves = readMoves(RED_WINS_MOVES);
+    // The moves must run one after the other, in order.
+    const lastResponse = await moves.reduce(
+      (previous, move) => previous.then(() => play({ gameId: id, move })),
+      Promise.resolve(),
+    );
+
+    expect(lastResponse.status).toBe(OK_STATUS);
+    expect(lastResponse.body).toMatchObject({ winner: 'red', state: 'won' });
+  });
+
+  it('keeps two games apart', async () => {
+    const first = await startGame();
+    const second = await startGame();
+
+    await play({ gameId: first.id, move: { playerId: 'red', column: 1 } });
+
+    expect((await getStatus(second.id)).body).toEqual({ id: second.id, ...NEW_GAME_STATUS });
+  });
+
+  it('refuses a move that breaks a rule with its message', async () => {
+    const { id } = await startGame();
+    await play({ gameId: id, move: { playerId: 'red', column: 1 } });
+
+    const { status, body } = await play({ gameId: id, move: { playerId: 'red', column: 2 } });
+
+    expect(status).toBe(BAD_REQUEST_STATUS);
+    expect(body).toEqual({ message: "red: it's not your turn!" });
+  });
+
+  it.each([
+    ['no body', { body: '' }],
+    ['a body that is not JSON', { body: 'playerId=red&column=1', contentType: 'application/x-www-form-urlencoded' }],
+    ['a JSON array', { body: '[]' }],
+    ['an unknown player', { body: '{"playerId":"green","column":1}' }],
+    ['the old playerid field', { body: '{"playerid":"red","column":1}' }],
+    ['a column written as a string', { body: '{"playerId":"red","column":"1"}' }],
+    ['a decimal column', { body: '{"playerId":"red","column":2.5}' }],
+    ['a column out of the board', { body: '{"playerId":"red","column":8}' }],
+  ])('refuses %s without playing', async (_case, request) => {
+    const { id } = await startGame();
+
+    const { status, body } = await postMove({ gameId: id, ...request });
+
+    expect(status).toBe(BAD_REQUEST_STATUS);
+    expect(body.message).toMatch(/must be/);
+    expect((await getStatus(id)).body).toEqual({ id, ...NEW_GAME_STATUS });
+  });
+
+  it.each([
+    ['an id that no game has', 'f'.repeat(GAME_ID_LENGTH)],
+    ['a malformed id', 'not-a-game-id'],
+  ])('answers 404 for %s', async (_case, gameId) => {
+    const statusResponse = await getStatus(gameId);
+    const playResponse = await play({ gameId, move: { playerId: 'red', column: 1 } });
+
+    expect(statusResponse).toMatchObject({ status: NOT_FOUND_STATUS, body: GAME_NOT_FOUND });
+    expect(playResponse).toMatchObject({ status: NOT_FOUND_STATUS, body: GAME_NOT_FOUND });
   });
 });

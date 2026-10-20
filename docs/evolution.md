@@ -16,3 +16,23 @@ on the newest one released.
 | Duration of the CI on a pull request, warm npm cache | no CI | 20 s |
 
 Decision: [0001. Check every pull request in GitHub Actions](decisions/0001-check-pull-requests-in-github-actions.md)
+
+## 2026: a Cloudflare Worker, one game per visitor
+
+The game ran only on a developer's machine, as one Express 4 server whose single game every
+visitor shared. It now runs on a Cloudflare Worker at `connect-four.issoufi.fr`: Express 5 serves
+the API, each game lives in its own Durable Object, and an OpenAPI 3.1 document, linted in the
+CI, describes the API at `/api/v1/`.
+
+| Figure | Before | After |
+| --- | --- | --- |
+| Hosting | none | Cloudflare Worker at `connect-four.issoufi.fr` |
+| Games | one for every visitor, until a restart | one per visitor, in a Durable Object, for 7 days after its last move |
+| Vulnerabilities of `npm audit --omit=dev` | 5 (3 moderate, 2 high) | 0 |
+| Production dependencies | 101 | 67 |
+| Tests (without the commit message checks, see the decision) | 105, in 5 files | 201, in 10 files |
+| Startup (not comparable, see the decision) | 158 ms, `node index.js` | 69.3 ms, Worker startup |
+| Lint of the OpenAPI document | none | Redocly CLI, recommended rules as errors |
+| Uploaded bundle | none | 1711.39 KiB, 496.77 KiB gzipped |
+
+Decision: [0002. Host the game on a Cloudflare Worker, with one Durable Object per game](decisions/0002-host-on-a-cloudflare-worker-with-durable-objects.md)
