@@ -36,3 +36,20 @@ CI, describes the API at `/api/v1/`.
 | Uploaded bundle | none | 1711.39 KiB, 496.77 KiB gzipped |
 
 Decision: [0002. Host the game on a Cloudflare Worker, with one Durable Object per game](decisions/0002-host-on-a-cloudflare-worker-with-durable-objects.md)
+
+## 2026: ESLint 10 with a flat configuration
+
+ESLint 6, from 2020, linted the code with the Airbnb base rules, and its dependencies caused
+every vulnerability that `npm audit` found. ESLint 10 now lints it, with a flat configuration
+that keeps the rules of Airbnb base, its layout rules coming from ESLint Stylistic.
+
+| Figure | Before | After |
+| --- | --- | --- |
+| ESLint | 6.8.0, deprecated | 10.12.0 |
+| Active rules on `index.js` | 222 | 207 |
+| Vulnerabilities of `npm audit` | 17 (2 low, 4 moderate, 11 high) | 0 |
+| Packages that `npm ci` installs | 462 | 301 |
+| `npm ci`, warm npm cache | 3.14 s | 2.34 s |
+| `npm run lint` | 0.98 s | 0.97 s |
+
+Decision: [0003. Lint with ESLint 10 and a flat configuration](decisions/0003-lint-with-eslint-10-and-a-flat-configuration.md)
