@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node index.js",
     "lint": "eslint . --max-warnings 0",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepare": "husky || true"
   },
   "author": "Issoufi ADAM <issoufi.adam1@gmail.com>",
   "license": "ISC",
@@ -16,10 +17,15 @@
     "swagger-ui-express": "^4.6.3"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@commitlint/lint": "^21.2.3",
+    "@commitlint/load": "^21.2.3",
     "eslint": "^6.8.0",
     "eslint-config-airbnb": "^18.2.1",
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.19.1",
+    "husky": "^9.1.7",
     "vitest": "^5.0.4"
   },
   "engines": {

@@ -15,9 +15,10 @@ The game engine does not depend on Express, and each instance of it is a separat
 
 ## Run the tests
 
-`npm test` runs the Vitest tests of the engine (`app/`) and of the routes (`routes/`). They need
-Node.js 22.12+, 24 or 26+ (the `engines` field of `package.json`). `.nvmrc` gives the version
-used in development and in the CI: 24, an LTS release.
+`npm test` runs the Vitest tests of the engine (`app/`), of the routes (`routes/`) and of the
+commit message checks (`commitlint.config.test.js`, `scripts/commit-message/`), which call Git.
+They need Node.js 22.12+, 24 or 26+ (the `engines` field of `package.json`). `.nvmrc` gives the
+version used in development and in the CI: 24, an LTS release.
 
 ## Lint
 
@@ -36,6 +37,17 @@ GitHub Actions runs `.github/workflows/ci.yml` on every pull request and every p
 Dependabot checks npm and GitHub Actions every week, for releases at least a week old
 (`.github/dependabot.yml`): one pull request for the npm minor and patch updates, and one for the
 GitHub Actions updates. It proposes no npm major update: each one goes through its own ticket.
+
+## Commit messages
+
+Every new commit follows [Conventional Commits](https://www.conventionalcommits.org/) and names
+its ticket in a `Refs: C4-<n>` trailer: in the last paragraph of the message, with no blank line
+before `Co-Authored-By:`. commitlint (`commitlint.config.js`) checks each commit in the `commit-msg`
+Git hook. Merge commits and the commits of Dependabot and release-please are not checked.
+
+`npm install` sets up the Git hooks with Husky (`.husky/`). On a branch named after a ticket,
+such as `C4-20`, the `prepare-commit-msg` hook adds `Refs: C4-20` to a message that has no
+`Refs:` line yet.
 
 ## History
 
