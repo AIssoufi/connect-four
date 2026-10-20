@@ -32,6 +32,7 @@ describe('fillText', () => {
       .toBe('Au tour de {color}.');
     expect(fillText({ template: 'Au tour de {color}.', values: undefined }))
       .toBe('Au tour de {color}.');
+    expect(fillText({ template: 'Au tour de {color}.', values: null })).toBe('Au tour de {color}.');
     expect(fillText({ template: '{toString}', values: {} })).toBe('{toString}');
   });
 

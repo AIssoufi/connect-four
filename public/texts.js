@@ -13,17 +13,18 @@ const PLACEHOLDER_PATTERN = /\{(\w+)\}/g;
  * Writes a text from its template, so that the page copy stays in `constants.js`.
  * @param {object} params
  * @param {string} params.template - The text, with placeholders such as `{color}`.
- * @param {object} [params.values] - The value of each placeholder, by name.
+ * @param {object|null} [params.values] - The value of each placeholder, by name.
  * @returns {string} The text. A placeholder without a value stays as it is.
  * @example fillText({ template: 'Au tour de {color}.', values: { color: 'rouge' } })
  *   // 'Au tour de rouge.'
  */
-export const fillText = ({ template, values = {} }) => template.replace(
+export const fillText = ({ template, values }) => template.replace(
   PLACEHOLDER_PATTERN,
   (placeholder, name) => {
-    const hasValue = Object.prototype.hasOwnProperty.call(values, name)
-      && values[name] !== undefined;
-    return hasValue ? String(values[name]) : placeholder;
+    const knownValues = values ?? {};
+    const hasValue = Object.prototype.hasOwnProperty.call(knownValues, name)
+      && knownValues[name] !== undefined;
+    return hasValue ? String(knownValues[name]) : placeholder;
   },
 );
 
