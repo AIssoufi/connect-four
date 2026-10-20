@@ -37,6 +37,11 @@ Dependabot checks npm and GitHub Actions every week, for releases at least a wee
 (`.github/dependabot.yml`): one pull request for the npm minor and patch updates, one per npm
 major update, and one for the GitHub Actions updates.
 
+## History
+
+[docs/evolution.md](docs/evolution.md) tells how the stack changed, with figures, and
+[docs/decisions/](docs/decisions/) keeps one record per decision.
+
 ## Vidéo de démonstration
 
 [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/T-oEjFyau7A/0.jpg)](http://www.youtube.com/watch?v=T-oEjFyau7A)
