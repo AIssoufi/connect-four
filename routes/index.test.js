@@ -160,6 +160,16 @@ describe('game routes', () => {
     expect(body).toEqual({ message: "red: it's not your turn!" });
   });
 
+  it('refuses a first move of yellow and keeps the board empty', async () => {
+    const { id } = await startGame();
+
+    const { status, body } = await play({ gameId: id, move: { playerId: 'yellow', column: 1 } });
+
+    expect(status).toBe(BAD_REQUEST_STATUS);
+    expect(body).toEqual({ message: "yellow: it's not your turn!" });
+    expect((await getStatus(id)).body).toEqual({ id, ...NEW_GAME_STATUS });
+  });
+
   it.each([
     ['no body', { body: '' }],
     ['a body that is not JSON', { body: 'playerId=red&column=1', contentType: 'application/x-www-form-urlencoded' }],

@@ -28,12 +28,23 @@ const createEmptyBoard = () => Array.from(
  * It does not depend on Express, so any server can host one instance per game.
  */
 class Engine {
-  constructor() {
-    this.init();
+  /**
+   * @param {object} [params]
+   * @param {string} [params.firstPlayer] - The player who plays first. Defaults to red, as for
+   *   every new game; a game saved when either player could start replays with its own.
+   */
+  constructor({ firstPlayer } = {}) {
+    this.init({ firstPlayer });
   }
 
-  /** Starts a new game: empty board, full token stocks, no last player and no winner. */
-  init() {
+  /**
+   * Starts a new game: empty board, full token stocks, no last player and no winner.
+   * @param {object} [params]
+   * @param {string} [params.firstPlayer] - The player who plays first. Defaults to red when it is
+   *   not one of `PLAYER_IDS`.
+   */
+  init({ firstPlayer } = {}) {
+    this.firstPlayer = isKnownPlayer(firstPlayer) ? firstPlayer : PLAYER_IDS.RED;
     this.board = createEmptyBoard();
     this.tokens = {
       [PLAYER_IDS.RED]: TOKENS_PER_PLAYER,
@@ -110,9 +121,13 @@ class Engine {
 
   /**
    * @param {string} currentPlayer - The player who wants to play.
-   * @returns {boolean} `true` unless the player made the last move.
+   * @returns {boolean} `true` for the first player before the first move, then unless the player
+   * made the last move.
    */
   isYourTurn(currentPlayer) {
+    const isFirstMove = this.lastPlayerWhoPlayed === undefined;
+    if (isFirstMove) return currentPlayer === this.firstPlayer;
+
     return this.lastPlayerWhoPlayed !== currentPlayer;
   }
 
