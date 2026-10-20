@@ -25,7 +25,7 @@ Each visitor plays their own game, and reloading the page starts a new one.
   which deletes it 7 days after its start or its last move.
 - A rate limit lets each IP address start 20 games a minute.
 - The page is plain HTML, CSS and JavaScript, with no build step.
-- [Vitest](https://vitest.dev/) runs the tests, ESLint and Redocly CLI lint the code and the
+- [Vitest](https://vitest.dev/) runs the tests, ESLint 10 and Redocly CLI lint the code and the
   OpenAPI document, and GitHub Actions runs them on every pull request.
 
 [docs/decisions/](docs/decisions/) records why, one decision per file.
@@ -98,15 +98,18 @@ and `CLOUDFLARE_ACCOUNT_ID`. The Worker needs no build step, no variable and no 
   Wrangler, with its files and its Durable Objects;
 - the commit message checks, which call Git.
 
-They need Node.js 22.12+, 24 or 26+ (the `engines` field of `package.json`). `.nvmrc` gives the
+They need Node.js 22.13+, 24 or 26+ (the `engines` field of `package.json`). `.nvmrc` gives the
 version used in development and in the CI: 24, an LTS release.
 
 ## Lint
 
 `npm run lint` runs both checks, and fails on any error or warning:
 
-- `npm run lint:js` checks every JavaScript file with ESLint and the Airbnb base rules. The page
-  scripts of `public/` are linted with the browser globals.
+- `npm run lint:js` checks every JavaScript file with ESLint 10 and its flat configuration,
+  `eslint.config.js`: the recommended rules, plus the rules of Airbnb base that the code was
+  written against, the layout ones from [ESLint Stylistic](https://eslint.style/). The page
+  scripts of `public/` are linted with the browser globals, and the other files with the Node.js
+  ones.
 - `npm run lint:api` checks the OpenAPI document with the recommended rules of
   [Redocly CLI](https://redocly.com/docs/cli/), each warning made an error (`redocly.yaml`).
   `.redocly.lint-ignore.yaml` lists the problems ignored on purpose, each with its reason.
