@@ -10,3 +10,9 @@ parserOptions:
   ecmaVersion: 2018
   sourceType: module
 rules: {}
+overrides:
+  - files:
+      - '**/*.test.js'
+    globals:
+      # Built into Node.js since version 18, which ESLint 6 does not know.
+      fetch: readonly
