@@ -34,8 +34,8 @@ GitHub Actions runs `.github/workflows/ci.yml` on every pull request and every p
   release of Node.js to it by hand.
 
 Dependabot checks npm and GitHub Actions every week, for releases at least a week old
-(`.github/dependabot.yml`): one pull request for the npm minor and patch updates, one per npm
-major update, and one for the GitHub Actions updates.
+(`.github/dependabot.yml`): one pull request for the npm minor and patch updates, and one for the
+GitHub Actions updates. It proposes no npm major update: each one goes through its own ticket.
 
 ## History
 

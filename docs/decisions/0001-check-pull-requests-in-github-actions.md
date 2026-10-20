@@ -25,8 +25,10 @@ In [#22](https://github.com/AIssoufi/connect-four/pull/22):
   release). Two more jobs run `npm ci` and `npm test` on Node.js 22 and 26: the oldest major
   release that `engines` accepts and the newest one released.
 - `.github/dependabot.yml` checks npm and GitHub Actions every week, for releases at least seven
-  days old: one pull request for the npm minor and patch updates, one per npm major update, and
-  one for the GitHub Actions updates.
+  days old: one pull request for the npm minor and patch updates, and one for the GitHub Actions
+  updates. It ignores the npm major updates, which go through tickets: Express and Swagger in
+  [#13](https://github.com/AIssoufi/connect-four/issues/13), ESLint in
+  [#15](https://github.com/AIssoufi/connect-four/issues/15).
 
 ## Alternatives considered
 
