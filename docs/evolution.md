@@ -30,9 +30,9 @@ CI, describes the API at `/api/v1/`.
 | Games | one for every visitor, until a restart | one per visitor, in a Durable Object, for 7 days after its last move |
 | Vulnerabilities of `npm audit --omit=dev` | 5 (3 moderate, 2 high) | 0 |
 | Production dependencies | 101 | 67 |
-| Tests | 105, in 5 files | 181, in 10 files |
-| Startup (not comparable, see the decision) | 158 ms, `node index.js` | 50.5 ms, Worker startup |
+| Tests (without the commit message checks, see the decision) | 105, in 5 files | 201, in 10 files |
+| Startup (not comparable, see the decision) | 158 ms, `node index.js` | 69.3 ms, Worker startup |
 | Lint of the OpenAPI document | none | Redocly CLI, recommended rules as errors |
-| Uploaded bundle | none | 1708.40 KiB, 495.96 KiB gzipped |
+| Uploaded bundle | none | 1711.39 KiB, 496.77 KiB gzipped |
 
 Decision: [0002. Host the game on a Cloudflare Worker, with one Durable Object per game](decisions/0002-host-on-a-cloudflare-worker-with-durable-objects.md)

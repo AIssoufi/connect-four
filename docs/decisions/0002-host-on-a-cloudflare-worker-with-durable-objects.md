@@ -85,26 +85,28 @@ For [#13](https://github.com/AIssoufi/connect-four/issues/13):
 | Games | one for every visitor, until a restart | one per visitor, in a Durable Object, for 7 days after its last move |
 | Vulnerabilities of `npm audit --omit=dev` | 5 (3 moderate, 2 high) | 0 |
 | Production dependencies | 101 | 67 |
-| Tests | 105, in 5 files | 181, in 10 files |
-| Startup (not comparable) | 158 ms, `node index.js` | 50.5 ms, Worker startup |
-| Uploaded bundle | none | 1708.40 KiB, 495.96 KiB gzipped |
+| Tests | 105, in 5 files | 201, in 10 files |
+| Startup (not comparable) | 158 ms, `node index.js` | 69.3 ms, Worker startup |
+| Uploaded bundle | none | 1711.39 KiB, 496.77 KiB gzipped |
 | Lint of the OpenAPI document | none | Redocly CLI, recommended rules as errors |
 
 The figures before come from the base commit, `ae139ec`, and the figures after from this branch.
 The vulnerabilities and the production dependencies come from `npm audit --omit=dev --json`, and
-the tests from `npm test`. The startup before is the median of 3 runs, from the start of
-`node index.js` to the first 200 of `GET /game/status`. The startup after is the profile window
-of `wrangler check startup`, which runs the startup of the Worker on the local machine (33.7 ms of
-it active): the two figures measure different things and are not comparable, and Cloudflare
-states that its own CPUs give other times. The bundle size comes from `wrangler deploy --dry-run`.
+the tests from `npm test`, without the 105 tests of the commit message checks that
+[#20](https://github.com/AIssoufi/connect-four/issues/20) added. The startup before is the
+median of 3 runs, from the start of `node index.js` to the first 200 of `GET /game/status`. The
+startup after is the median profile window of 3 runs of `wrangler check startup`, which runs the
+startup of the Worker on the local machine (45.7 ms of it active). The two figures measure
+different things and are not comparable, and Cloudflare states that its own CPUs give other
+times. The bundle size comes from `wrangler deploy --dry-run`.
 
 - Each visitor plays their own game, and reloading the page starts a new one. A game survives
   the eviction of its Durable Object.
 - A client of the old API breaks: the routes take a game id, and a move is a `POST`.
 - The docs page needs jsDelivr, and a new version of Swagger UI needs its new hashes.
 - Deploying needs the Cloudflare account of the owner, outside the repository.
-- The full `npm audit` still finds 18 vulnerabilities, all in ESLint 6, its import plugin and its
-  Airbnb configurations, which only run in development.
+- The full `npm audit` still finds 18 vulnerabilities, all in ESLint 6 and its dependencies,
+  which only run in development.
 - Left to do: showing the errors and a New game button
   ([#14](https://github.com/AIssoufi/connect-four/issues/14)), the README rewrite
   ([#17](https://github.com/AIssoufi/connect-four/issues/17)), and ESLint 10
