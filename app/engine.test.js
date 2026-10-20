@@ -79,12 +79,6 @@ describe('Engine', () => {
       });
     });
 
-    it('lets either player start', () => {
-      playMoves({ engine, moves: 'Y1 R1' });
-
-      expect(engine.getStatus().lastPlayerWhoPlayed).toBe('red');
-    });
-
     it.each([
       ['a row', 'R1 Y1 R2 Y2 R3 Y3 R4'],
       ['a column', 'R1 Y2 R1 Y2 R1 Y2 R1'],
@@ -183,6 +177,35 @@ describe('Engine', () => {
       expectRefusedMove({ move: { playerId: 'red', column: 2 }, message: /not your turn/ });
     });
 
+    it('refuses a first move of yellow, since red plays first', () => {
+      expectRefusedMove({ move: { playerId: 'yellow', column: 1 }, message: "yellow: it's not your turn!" });
+
+      playMoves({ engine, moves: 'R1' });
+      expect(engine.getStatus().lastPlayerWhoPlayed).toBe('red');
+    });
+
+    it('lets yellow play first in a game that starts with yellow', () => {
+      engine = new Engine({ firstPlayer: 'yellow' });
+
+      expectRefusedMove({ move: { playerId: 'red', column: 1 }, message: "red: it's not your turn!" });
+      playMoves({ engine, moves: 'Y1 R2' });
+      expect(engine.getStatus().lastPlayerWhoPlayed).toBe('red');
+    });
+
+    it.each([
+      ['an unknown player', 'green'],
+      ['null', null],
+      ['a number', 1],
+      ['an empty string', ''],
+      ['a wrong casing', 'Yellow'],
+    ])('lets red play first when the first player is %s', (_case, firstPlayer) => {
+      engine = new Engine({ firstPlayer });
+
+      expectRefusedMove({ move: { playerId: 'yellow', column: 1 }, message: "yellow: it's not your turn!" });
+      playMoves({ engine, moves: 'R1' });
+      expect(engine.getStatus().lastPlayerWhoPlayed).toBe('red');
+    });
+
     it('refuses a full column and keeps the turn', () => {
       playMoves({ engine, moves: 'R1 Y1 R1 Y1 R1 Y1' });
 
@@ -220,6 +243,16 @@ describe('Engine', () => {
       engine.init();
 
       expect(engine.getStatus()).toEqual(new Engine().getStatus());
+    });
+
+    it('lets red play first again after a game that started with yellow', () => {
+      engine = new Engine({ firstPlayer: 'yellow' });
+
+      engine.init();
+
+      expect(() => engine.play({ playerId: 'yellow', column: 1 })).toThrow("yellow: it's not your turn!");
+      engine.play({ playerId: 'red', column: 1 });
+      expect(engine.getStatus().lastPlayerWhoPlayed).toBe('red');
     });
   });
 });
