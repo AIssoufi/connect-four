@@ -11,6 +11,14 @@ parserOptions:
   sourceType: module
 rules: {}
 overrides:
+  # The page script runs in the browser as a classic script, not in Node.js.
+  - files:
+      - 'public/**/*.js'
+    env:
+      browser: true
+      node: false
+    parserOptions:
+      sourceType: script
   - files:
       - '**/*.test.js'
     globals:

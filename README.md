@@ -16,7 +16,31 @@ The game engine does not depend on Express, and each instance of it is a separat
 ## Run the tests
 
 `npm test` runs the Vitest tests of the engine (`app/`) and of the routes (`routes/`). They need
-Node.js 22.12+, 24 or 26+ (the `engines` field of `package.json`).
+Node.js 22.12+, 24 or 26+ (the `engines` field of `package.json`). `.nvmrc` gives the version
+used in development and in the CI: 24, an LTS release.
+
+## Lint
+
+`npm run lint` checks every JavaScript file with ESLint and the Airbnb base rules, and fails on
+any error or warning. The page script of `public/` is linted with the browser globals.
+
+## Continuous integration
+
+GitHub Actions runs `.github/workflows/ci.yml` on every pull request and every push to `master`:
+
+- `npm ci`, `npm run lint` and `npm test` on the Node.js version of `.nvmrc`;
+- `npm ci` and `npm test` on Node.js 22 and 26: the oldest major release that `engines` accepts
+  and the newest one released. Dependabot does not update this matrix: add each new major
+  release of Node.js to it by hand.
+
+Dependabot checks npm and GitHub Actions every week, for releases at least a week old
+(`.github/dependabot.yml`): one pull request for the npm minor and patch updates, and one for the
+GitHub Actions updates. It proposes no npm major update: each one goes through its own ticket.
+
+## History
+
+[docs/evolution.md](docs/evolution.md) tells how the stack changed, with figures, and
+[docs/decisions/](docs/decisions/) keeps one record per decision.
 
 ## Vidéo de démonstration
 
