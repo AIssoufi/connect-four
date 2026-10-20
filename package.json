@@ -11,16 +11,16 @@
   "author": "Issoufi ADAM <issoufi.adam1@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.17.1",
-    "swagger-jsdoc": "^3.5.0",
-    "swagger-ui-express": "^4.1.4"
+    "express": "^4.22.3",
+    "swagger-jsdoc": "^3.7.0",
+    "swagger-ui-express": "^4.6.3"
   },
   "devDependencies": {
     "eslint": "^6.8.0",
-    "eslint-config-airbnb": "^18.0.1",
+    "eslint-config-airbnb": "^18.2.1",
     "eslint-config-airbnb-base": "^14.0.0",
     "eslint-plugin-import": "^2.19.1",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.4"
   },
   "engines": {
     "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
