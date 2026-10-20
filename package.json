@@ -13,7 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.22.3",
-    "swagger-jsdoc": "^3.7.0",
+    "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^4.6.3"
   },
   "devDependencies": {
