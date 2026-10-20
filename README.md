@@ -20,7 +20,8 @@ visitor plays their own game, and reloading the page starts a new one.
   a move that breaks a rule (game over, not the player's turn, full column) returns
   `400 { "message": "..." }` and leaves the game unchanged.
 
-An id that no game has, or a route that does not exist, returns `404 { "message": "..." }`.
+An id that no game has, or a route that does not exist, returns `404 { "message": "..." }`. A
+game is deleted 7 days after its start or its last move, so its id then returns `404` too.
 
 ## Architecture
 
@@ -32,7 +33,8 @@ The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), d
 - `index.js` runs the Express app of `routes/` on the Worker, with the `nodejs_compat` flag.
 - Each game lives in its own [Durable Object](https://developers.cloudflare.com/durable-objects/)
   (`worker/Game.js`), which saves its moves and plays them again in the engine of `app/` when it
-  wakes up. The engine does not depend on Express or on Cloudflare.
+  wakes up. The engine does not depend on Express or on Cloudflare. An alarm of the Durable
+  Object deletes the game 7 days after its start or its last move.
 
 [docs/decisions/0002](docs/decisions/0002-host-on-a-cloudflare-worker-with-durable-objects.md)
 explains these choices.

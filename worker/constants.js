@@ -13,6 +13,15 @@ const GAME_ID_PATTERN = new RegExp(`^[0-9a-f]{${GAME_ID_LENGTH}}$`);
 /** Storage key of the moves played in a game, in the order they were played. */
 const MOVES_STORAGE_KEY = 'moves';
 
+/** Milliseconds in a day. */
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/** Days after its start or its last move when a game is deleted. */
+const GAME_TTL_DAYS = 7;
+
+/** Time after its start or its last move when a game is deleted. */
+const GAME_TTL_MS = GAME_TTL_DAYS * MS_PER_DAY;
+
 module.exports = {
-  SERVER_PORT, GAME_ID_LENGTH, GAME_ID_PATTERN, MOVES_STORAGE_KEY,
+  SERVER_PORT, GAME_ID_LENGTH, GAME_ID_PATTERN, MOVES_STORAGE_KEY, GAME_TTL_MS,
 };

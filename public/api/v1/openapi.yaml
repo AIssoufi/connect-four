@@ -5,7 +5,8 @@ info:
   description: >-
     Plays games of Connect Four between a red and a yellow player, red first. Each game has its
     own id: start one with `POST /game`, then read it and play its moves with that id. A game
-    ends when a player aligns four tokens, or in a draw when the board is full.
+    ends when a player aligns four tokens, or in a draw when the board is full. A game is
+    deleted 7 days after its start or its last move.
   license:
     name: ISC
     identifier: ISC
@@ -247,7 +248,9 @@ components:
           type: string
   responses:
     GameNotFound:
-      description: No game has this id.
+      description: >-
+        No game has this id: it was never started, or it was deleted 7 days after its start or
+        its last move.
       content:
         application/json:
           schema:

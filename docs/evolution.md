@@ -27,7 +27,7 @@ CI, describes the API at `/api/v1/`.
 | Figure | Before | After |
 | --- | --- | --- |
 | Hosting | none | Cloudflare Worker at `connect-four.issoufi.fr` |
-| Games | one for every visitor, until a restart | one per visitor, in a Durable Object |
+| Games | one for every visitor, until a restart | one per visitor, in a Durable Object, for 7 days after its last move |
 | Vulnerabilities of `npm audit --omit=dev` | 5 (3 moderate, 2 high) | 0 |
 | Production dependencies | 101 | 67 |
 | Tests | 105, in 5 files | 181, in 10 files |

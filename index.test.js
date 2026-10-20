@@ -129,6 +129,19 @@ describe('the Worker', () => {
     expect((await getStatus(id)).body).toEqual(statusBefore);
   });
 
+  it('answers 404 for a game once its Durable Object deleted it', async () => {
+    const { id } = await startGame();
+    await play({ gameId: id, move: { playerId: 'red', column: 4 } });
+    const env = await harness.getWorker().getEnv();
+
+    // The alarm that `StoredGame` schedules runs `deleteGame()`, which RPC can call.
+    await env.GAMES.get(env.GAMES.idFromString(id)).deleteGame();
+
+    expect(await getStatus(id)).toEqual(GAME_NOT_FOUND);
+    expect(await play({ gameId: id, move: { playerId: 'yellow', column: 4 } }))
+      .toEqual(GAME_NOT_FOUND);
+  });
+
   it('refuses an invalid move without playing it', async () => {
     const { id } = await startGame();
 

@@ -34,6 +34,8 @@ For [#13](https://github.com/AIssoufi/connect-four/issues/13):
   SQLite. Its id, 64 hexadecimal characters, is the id of the game. The object saves the list of
   the moves and plays them again in a new engine when it wakes up, so the engine knows nothing of
   the storage.
+- An alarm of the object deletes its game 7 days after its start or its last move, so the games
+  of past visitors do not stay stored; its id then returns 404.
 - The API changes its contract: `POST /game` starts a game and returns its id,
   `GET /game/{gameId}/status` reads it, and `POST /game/{gameId}/play` plays a move given as a
   JSON body, `{ "playerId": "red", "column": 1 }`. An unknown game or route returns 404, a refused
@@ -78,7 +80,7 @@ For [#13](https://github.com/AIssoufi/connect-four/issues/13):
 | Figure | Before | After |
 | --- | --- | --- |
 | Hosting | none | Cloudflare Worker at `connect-four.issoufi.fr` |
-| Games | one for every visitor, until a restart | one per visitor, in a Durable Object |
+| Games | one for every visitor, until a restart | one per visitor, in a Durable Object, for 7 days after its last move |
 | Vulnerabilities of `npm audit --omit=dev` | 5 (3 moderate, 2 high) | 0 |
 | Production dependencies | 101 | 67 |
 | Tests | 105, in 5 files | 181, in 10 files |

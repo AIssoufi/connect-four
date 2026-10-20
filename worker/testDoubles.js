@@ -21,17 +21,22 @@ export const createMapStorage = () => {
 /**
  * Builds a stand-in for the `GAMES` Durable Object namespace, for the tests that run in
  * Node.js: each id it creates gets its own `StoredGame`, whose methods answer promises as the
- * RPC stubs do. Like the real namespace, `idFromString` refuses an id it did not create.
+ * RPC stubs do, and which is never deleted. Like the real namespace, `idFromString` refuses an
+ * id it did not create.
  * @returns {{ newUniqueId: Function, idFromString: Function, get: Function }} The namespace.
  */
 export const createFakeGameNamespace = () => {
   const gamesById = new Map();
   const toId = (gameId) => ({ toString: () => gameId });
+  const keepGame = async () => {};
 
   return {
     newUniqueId() {
       const gameId = (gamesById.size + 1).toString(16).padStart(GAME_ID_LENGTH, '0');
-      gamesById.set(gameId, new StoredGame({ storage: createMapStorage() }));
+      gamesById.set(gameId, new StoredGame({
+        storage: createMapStorage(),
+        scheduleDeletion: keepGame,
+      }));
 
       return toId(gameId);
     },
