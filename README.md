@@ -15,9 +15,10 @@ The game engine does not depend on Express, and each instance of it is a separat
 
 ## Run the tests
 
-`npm test` runs the Vitest tests of the engine (`app/`) and of the routes (`routes/`). They need
-Node.js 22.12+, 24 or 26+ (the `engines` field of `package.json`). `.nvmrc` gives the version
-used in development and in the CI: 24, an LTS release.
+`npm test` runs the Vitest tests of the engine (`app/`), of the routes (`routes/`) and of the
+commit message checks, which call Git. They need Node.js 22.12+, 24 or 26+ (the `engines` field
+of `package.json`). `.nvmrc` gives the version used in development and in the CI: 24, an LTS
+release.
 
 ## Lint
 
@@ -33,9 +34,31 @@ GitHub Actions runs `.github/workflows/ci.yml` on every pull request and every p
   and the newest one released. Dependabot does not update this matrix: add each new major
   release of Node.js to it by hand.
 
+`.github/workflows/commit-messages.yml` checks the commit messages of every pull request, and
+its title unless a bot opened it, with commitlint (see [Commit messages](#commit-messages)).
+
 Dependabot checks npm and GitHub Actions every week, for releases at least a week old
 (`.github/dependabot.yml`): one pull request for the npm minor and patch updates, and one for the
 GitHub Actions updates. It proposes no npm major update: each one goes through its own ticket.
+
+## Commit messages
+
+Every new commit follows [Conventional Commits](https://www.conventionalcommits.org/) and names
+its ticket in a trailer:
+
+```text
+feat: add a New game button
+
+Refs: C4-14
+Co-Authored-By: …
+```
+
+- `Refs: C4-<n>` sits in the last paragraph, with no blank line before `Co-Authored-By:`.
+- commitlint checks each commit in the `commit-msg` Git hook, and in the CI. The CI also checks
+  the title of a pull request, without the trailer, unless a bot opened it.
+- Merge commits and the commits of Dependabot and release-please are not checked.
+- `npm install` sets up the hooks with Husky. On a branch named after a ticket, such as `C4-20`,
+  the `prepare-commit-msg` hook adds `Refs: C4-20` to a message that has no `Refs:` line yet.
 
 ## History
 

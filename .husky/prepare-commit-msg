@@ -1,0 +1,1 @@
+node scripts/commit-message/prepare-commit-msg.js "$@"

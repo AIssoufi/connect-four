@@ -1,0 +1,49 @@
+name: Commit messages
+
+on:
+  pull_request:
+    # `edited` checks the title again when it changes.
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: commit-messages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  commitlint:
+    name: Check the commit messages and the title
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+        with:
+          # The whole history, so that the commits of the pull request can be listed from its base.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js from .nvmrc
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The commits of bots (Dependabot, release-please) pass: the configuration ignores them.
+      - name: Check the commit messages of the pull request
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: npx commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
+
+      # The titles of bots are not conventional enough: Dependabot capitalizes its subject.
+      - name: Check the title of the pull request
+        if: github.event.pull_request.user.type != 'Bot'
+        env:
+          PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PULL_REQUEST_TITLE" | npx commitlint --config commitlint.pr-title.config.js --verbose
