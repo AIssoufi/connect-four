@@ -38,6 +38,21 @@ export const CELL_CLASS_NAME = 'column token';
 /** The class name of a column of the control panel, where a click drops a token. */
 export const COLUMN_PICKER_CLASS_NAME = 'token';
 
+/** The text that says whose turn it is: `{color}` is the name of the player's color. */
+export const TURN_TEXT = 'Au tour de {color}.';
+
+/** The text that says who won: `{color}` is the capitalized name of the winner's color. */
+export const WIN_TEXT = '{color} a gagné.';
+
+/** The name of a column of the control panel: `{number}` counts the columns from 1. */
+export const COLUMN_LABEL = 'Colonne {number}';
+
+/** The name of a column of the control panel that has no free cell left. */
+export const FULL_COLUMN_LABEL = 'Colonne {number} pleine';
+
+/** The message shown when a player picks a column that has no free cell left. */
+export const FULL_COLUMN_MESSAGE = 'La colonne {number} est pleine.';
+
 /** The text shown when a game is a draw. */
 export const DRAW_TEXT = 'Match nul : le plateau est plein.';
 

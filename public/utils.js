@@ -1,7 +1,5 @@
 import {
-  CELL_CLASS_NAME, CONNECTION_ERROR_MESSAGE, DRAW_TEXT, EMPTY_CELL, ERROR_MESSAGES_BY_STATUS,
-  GAME_OVER_MESSAGE, GAME_ROUTE, GAME_STATES, PLAYER_COLOR_NAMES, SERVER_ERROR_MESSAGE,
-  UNKNOWN_COLUMN_NUMBER,
+  CELL_CLASS_NAME, EMPTY_CELL, GAME_STATES, PLAYER_COLOR_NAMES, UNKNOWN_COLUMN_NUMBER,
 } from './constants.js';
 
 /**
@@ -65,9 +63,10 @@ export const isGameStatus = (game) => {
 
 /**
  * Finds the player whose turn it is: the first player who did not make the last move.
- * @param {object} params
- * @param {string[]} params.players - The ids of the players, red first.
- * @param {string} params.lastPlayerWhoPlayed - The player who made the last move, or `nobody`.
+ * @param {object} [params]
+ * @param {string[]} [params.players] - The ids of the players, red first.
+ * @param {string} [params.lastPlayerWhoPlayed] - The player who made the last move, or
+ *   `nobody`.
  * @returns {string|null} The id of the next player, or `null` without any other player.
  * @example getNextPlayer({ players: ['red', 'yellow'], lastPlayerWhoPlayed: 'red' }) // 'yellow'
  */
@@ -87,30 +86,6 @@ export const getNextPlayer = ({ players, lastPlayerWhoPlayed } = {}) => {
 export const isGameOver = (game) => game?.state !== GAME_STATES.playing;
 
 /**
- * Writes the state of a game: whose turn it is, who won, or a draw.
- * @param {object} game - The game status, with its `state`, `players`, `lastPlayerWhoPlayed`
- *   and `winner`.
- * @returns {string} The text to show, empty for a game the page cannot describe.
- * @example getStatusText({ state: 'won', winner: 'red' }) // 'Rouge a gagné.'
- */
-export const getStatusText = (game) => {
-  switch (game?.state) {
-    case GAME_STATES.playing: {
-      const colorName = getPlayerColorName(getNextPlayer(game));
-      return colorName ? `Au tour de ${colorName}.` : '';
-    }
-    case GAME_STATES.won: {
-      const colorName = getPlayerColorName(game.winner);
-      return colorName ? `${colorName[0].toUpperCase()}${colorName.slice(1)} a gagné.` : '';
-    }
-    case GAME_STATES.draw:
-      return DRAW_TEXT;
-    default:
-      return '';
-  }
-};
-
-/**
  * Tells whether a column has no free cell left.
  * @param {object} params
  * @param {Array<Array<string|number>>} params.board - The board, top row first.
@@ -122,7 +97,12 @@ export const isColumnFull = ({ board, columnIndex }) => {
   const topRow = Array.isArray(board) ? board[0] : undefined;
   const isInBoard = Array.isArray(topRow) && Number.isInteger(columnIndex)
     && columnIndex >= 0 && columnIndex < topRow.length;
-  return !isInBoard || topRow[columnIndex] !== EMPTY_CELL;
+  if (!isInBoard) {
+    return true;
+  }
+
+  const isTopCellTaken = topRow[columnIndex] !== EMPTY_CELL;
+  return isTopCellTaken;
 };
 
 /**
@@ -134,49 +114,6 @@ export const isColumnFull = ({ board, columnIndex }) => {
 export const getColumnNumber = (columnIndex) => {
   const isValidIndex = Number.isInteger(columnIndex) && columnIndex >= 0;
   return isValidIndex ? columnIndex + 1 : UNKNOWN_COLUMN_NUMBER;
-};
-
-/**
- * Builds the name of a column of the control panel, which says when the column is full.
- * @param {object} params
- * @param {number} params.columnIndex - The index of the column, from 0 for the left one.
- * @param {boolean} params.isFull - Whether the column has no free cell left.
- * @returns {string} The name, with the column numbered from 1.
- * @example getColumnLabel({ columnIndex: 2, isFull: true }) // 'Colonne 3 pleine'
- */
-export const getColumnLabel = ({ columnIndex, isFull }) => {
-  const columnName = `Colonne ${getColumnNumber(columnIndex)}`;
-  return isFull ? `${columnName} pleine` : columnName;
-};
-
-/**
- * Finds why the page refuses a move before sending it: the game is over or the column is full.
- * @param {object} params
- * @param {object} params.game - The game status.
- * @param {number} params.columnIndex - The index of the column, from 0 for the left one.
- * @returns {string|null} The message to show, or `null` when the move can be sent.
- * @example getMoveRefusal({ game, columnIndex: 2 }) // 'La colonne 3 est pleine.'
- */
-export const getMoveRefusal = ({ game, columnIndex }) => {
-  if (isGameOver(game)) {
-    return GAME_OVER_MESSAGE;
-  }
-
-  if (isColumnFull({ board: game.board, columnIndex })) {
-    return `La colonne ${getColumnNumber(columnIndex)} est pleine.`;
-  }
-
-  return null;
-};
-
-/**
- * Explains an error response of the API.
- * @param {number} status - The HTTP status of the response.
- * @returns {string} The message of the status, or the server error message for any other one.
- */
-export const getErrorMessage = (status) => {
-  const isExplainedStatus = Object.prototype.hasOwnProperty.call(ERROR_MESSAGES_BY_STATUS, status);
-  return isExplainedStatus ? ERROR_MESSAGES_BY_STATUS[status] : SERVER_ERROR_MESSAGE;
 };
 
 /**
@@ -196,40 +133,3 @@ export const getCellClassName = (token) => {
  * @returns {string} The key, to compare with the key of the board drawn last.
  */
 export const getBoardKey = (board) => JSON.stringify(board) ?? '';
-
-/**
- * Builds the route that plays a move in a game.
- * @param {string} gameId - The id of the game.
- * @returns {string} The route, with the id encoded.
- * @example getPlayRoute('abc') // '/game/abc/play'
- */
-export const getPlayRoute = (gameId) => `${GAME_ROUTE}/${encodeURIComponent(gameId)}/play`;
-
-/**
- * Sends a request to the API and reads the game status it returns.
- * @param {object} params
- * @param {string} params.route - The path of the request, such as `/game`.
- * @param {RequestInit} [params.init] - The method, the headers and the body.
- * @param {typeof fetch} [params.fetchGame] - The function that sends the request.
- * @returns {Promise<{ game: object } | { error: string }>} The game status, or the message that
- *   explains why there is none. It never rejects.
- */
-export const requestGame = async ({ route, init, fetchGame = fetch }) => {
-  let response;
-  try {
-    response = await fetchGame(route, init);
-  } catch {
-    return { error: CONNECTION_ERROR_MESSAGE };
-  }
-
-  if (!response.ok) {
-    return { error: getErrorMessage(response.status) };
-  }
-
-  try {
-    const game = await response.json();
-    return isGameStatus(game) ? { game } : { error: SERVER_ERROR_MESSAGE };
-  } catch {
-    return { error: SERVER_ERROR_MESSAGE };
-  }
-};

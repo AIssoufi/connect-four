@@ -1,13 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  getBoardKey, getCellClassName, getColumnLabel, getColumnNumber, getErrorMessage, getMoveRefusal,
-  getNextPlayer, getPlayerColorName, getPlayRoute, getStatusText, isBoardSize, isColumnFull,
-  isDrawableBoard, isGameOver, isGameStatus, requestGame,
+  getBoardKey, getCellClassName, getColumnNumber, getNextPlayer, getPlayerColorName, isBoardSize,
+  isColumnFull, isDrawableBoard, isGameOver, isGameStatus,
 } from './utils.js';
-import {
-  CONNECTION_ERROR_MESSAGE, DRAW_TEXT, GAME_NOT_FOUND_MESSAGE, GAME_OVER_MESSAGE,
-  MOVE_REFUSED_MESSAGE, SERVER_ERROR_MESSAGE, TOO_MANY_STARTS_MESSAGE,
-} from './constants.js';
 
 const PLAYERS = ['red', 'yellow'];
 
@@ -25,19 +20,6 @@ const GAME = {
   state: 'playing',
   board: BOARD,
 };
-
-/**
- * Builds a fake `fetch` that answers every request with the same response.
- * @param {object} params
- * @param {number} params.status - The HTTP status of the response.
- * @param {() => Promise<unknown>} params.json - Reads the body of the response.
- * @returns {typeof fetch} The fake.
- */
-const fakeFetch = ({ status, json }) => async () => ({
-  ok: status >= 200 && status < 300,
-  status,
-  json,
-});
 
 describe('getPlayerColorName', () => {
   it('names the color of each player', () => {
@@ -143,31 +125,6 @@ describe('isGameOver', () => {
   });
 });
 
-describe('getStatusText', () => {
-  it('says whose turn it is', () => {
-    expect(getStatusText(GAME)).toBe('Au tour de jaune.');
-    expect(getStatusText({ ...GAME, lastPlayerWhoPlayed: 'nobody' })).toBe('Au tour de rouge.');
-  });
-
-  it('says who won', () => {
-    expect(getStatusText({ ...GAME, state: 'won', winner: 'red' })).toBe('Rouge a gagné.');
-    expect(getStatusText({ ...GAME, state: 'won', winner: 'yellow' })).toBe('Jaune a gagné.');
-  });
-
-  it('says that the game is a draw', () => {
-    expect(getStatusText({ ...GAME, state: 'draw' })).toBe(DRAW_TEXT);
-  });
-
-  it('returns an empty text for a game it cannot describe', () => {
-    expect(getStatusText({ ...GAME, state: 'won', winner: 'no winner' })).toBe('');
-    expect(getStatusText({ ...GAME, players: ['blue', 'green'] })).toBe('');
-    expect(getStatusText({ ...GAME, players: undefined })).toBe('');
-    expect(getStatusText({ ...GAME, state: 'paused' })).toBe('');
-    expect(getStatusText(undefined)).toBe('');
-    expect(getStatusText(null)).toBe('');
-  });
-});
-
 describe('isColumnFull', () => {
   it('tells a full column from one with a free cell', () => {
     expect(isColumnFull({ board: BOARD, columnIndex: 0 })).toBe(true);
@@ -202,55 +159,6 @@ describe('getColumnNumber', () => {
   });
 });
 
-describe('getColumnLabel', () => {
-  it('names a column, and says when it is full', () => {
-    expect(getColumnLabel({ columnIndex: 2, isFull: false })).toBe('Colonne 3');
-    expect(getColumnLabel({ columnIndex: 2, isFull: true })).toBe('Colonne 3 pleine');
-  });
-
-  it('writes ? for an invalid column', () => {
-    expect(getColumnLabel({ columnIndex: undefined, isFull: false })).toBe('Colonne ?');
-  });
-});
-
-describe('getMoveRefusal', () => {
-  it('accepts a move in a column with a free cell', () => {
-    expect(getMoveRefusal({ game: GAME, columnIndex: 1 })).toBeNull();
-  });
-
-  it('refuses a move in a full column', () => {
-    expect(getMoveRefusal({ game: GAME, columnIndex: 0 })).toBe('La colonne 1 est pleine.');
-  });
-
-  it('refuses any move once the game is over', () => {
-    expect(getMoveRefusal({ game: { ...GAME, state: 'won' }, columnIndex: 1 }))
-      .toBe(GAME_OVER_MESSAGE);
-    expect(getMoveRefusal({ game: { ...GAME, state: 'draw' }, columnIndex: 1 }))
-      .toBe(GAME_OVER_MESSAGE);
-    expect(getMoveRefusal({ game: undefined, columnIndex: 1 })).toBe(GAME_OVER_MESSAGE);
-  });
-
-  it('refuses a move in a column outside the board', () => {
-    expect(getMoveRefusal({ game: GAME, columnIndex: 3 })).toBe('La colonne 4 est pleine.');
-    expect(getMoveRefusal({ game: GAME, columnIndex: undefined })).toBe('La colonne ? est pleine.');
-  });
-});
-
-describe('getErrorMessage', () => {
-  it('explains each error status of the API', () => {
-    expect(getErrorMessage(400)).toBe(MOVE_REFUSED_MESSAGE);
-    expect(getErrorMessage(404)).toBe(GAME_NOT_FOUND_MESSAGE);
-    expect(getErrorMessage(429)).toBe(TOO_MANY_STARTS_MESSAGE);
-  });
-
-  it('falls back to the server error message for any other status', () => {
-    expect(getErrorMessage(500)).toBe(SERVER_ERROR_MESSAGE);
-    expect(getErrorMessage(401)).toBe(SERVER_ERROR_MESSAGE);
-    expect(getErrorMessage(undefined)).toBe(SERVER_ERROR_MESSAGE);
-    expect(getErrorMessage('toString')).toBe(SERVER_ERROR_MESSAGE);
-  });
-});
-
 describe('getCellClassName', () => {
   it('adds the class of the token of a player', () => {
     expect(getCellClassName('red')).toBe('column token red-token');
@@ -277,72 +185,5 @@ describe('getBoardKey', () => {
 
   it('returns an empty key for a missing board', () => {
     expect(getBoardKey(undefined)).toBe('');
-  });
-});
-
-describe('getPlayRoute', () => {
-  it('builds the play route of a game', () => {
-    expect(getPlayRoute('abc')).toBe('/game/abc/play');
-  });
-
-  it('encodes an id that holds a slash or a space', () => {
-    expect(getPlayRoute('a/b c')).toBe('/game/a%2Fb%20c/play');
-  });
-});
-
-describe('requestGame', () => {
-  const route = '/game';
-
-  it('returns the game status of a successful response', async () => {
-    const fetchGame = fakeFetch({ status: 201, json: async () => GAME });
-
-    expect(await requestGame({ route, fetchGame })).toEqual({ game: GAME });
-  });
-
-  it('passes the route and the options to fetch', async () => {
-    const calls = [];
-    const init = { method: 'POST' };
-    const fetchGame = async (...args) => {
-      calls.push(args);
-      return { ok: true, status: 200, json: async () => GAME };
-    };
-
-    await requestGame({ route, init, fetchGame });
-
-    expect(calls).toEqual([[route, init]]);
-  });
-
-  it('explains an error response without reading a game from it', async () => {
-    const json = async () => ({ message: 'The column 1 is full!' });
-
-    expect(await requestGame({ route, fetchGame: fakeFetch({ status: 400, json }) }))
-      .toEqual({ error: MOVE_REFUSED_MESSAGE });
-    expect(await requestGame({ route, fetchGame: fakeFetch({ status: 404, json }) }))
-      .toEqual({ error: GAME_NOT_FOUND_MESSAGE });
-    expect(await requestGame({ route, fetchGame: fakeFetch({ status: 429, json }) }))
-      .toEqual({ error: TOO_MANY_STARTS_MESSAGE });
-    expect(await requestGame({ route, fetchGame: fakeFetch({ status: 500, json }) }))
-      .toEqual({ error: SERVER_ERROR_MESSAGE });
-  });
-
-  it('explains a request that does not reach the server', async () => {
-    const fetchGame = async () => {
-      throw new TypeError('Failed to fetch');
-    };
-
-    expect(await requestGame({ route, fetchGame })).toEqual({ error: CONNECTION_ERROR_MESSAGE });
-  });
-
-  it('explains a successful response that holds no game status', async () => {
-    const invalidJson = async () => {
-      throw new SyntaxError('Unexpected token <');
-    };
-
-    const bodies = [invalidJson, async () => ({}), async () => null];
-    const results = await Promise.all(bodies.map((json) => requestGame({
-      route, fetchGame: fakeFetch({ status: 200, json }),
-    })));
-
-    expect(results).toEqual(bodies.map(() => ({ error: SERVER_ERROR_MESSAGE })));
   });
 });

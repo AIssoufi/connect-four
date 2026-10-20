@@ -16,7 +16,7 @@ lowest free cell. The first player who aligns four tokens, in a row, a column or
 wins. When the 42 cells are full with no alignment, the game is a draw.
 
 Above the board, the page says whose turn it is, then who won or that the game is a draw. It
-shows why a move cannot be played, such as a full column, whose circle is greyed out, or a game
+shows why a move cannot be played, such as a full column, whose circle is grayed out, or a game
 that is over. Each visitor plays their own game: the Nouvelle partie button, or reloading the
 page, starts a new one.
 
@@ -62,8 +62,9 @@ The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), d
 
 - Cloudflare serves the files of `public/` (the page, its scripts, its favicon and the API docs)
   before the Worker runs. `public/.assetsignore` keeps the tests of the page helpers out of it.
-- The page loads `public/main.js` as an ES module, which draws the game and imports its rules
-  and texts from `public/utils.js` and `public/constants.js`.
+- The page loads `public/main.js` as an ES module, which draws the game. It calls the API through
+  `public/api.js`, imports its rules from `public/utils.js`, and writes its texts with
+  `public/texts.js` from the copy of `public/constants.js`.
 - `index.js` runs the Express app of `routes/` on the Worker, with the `nodejs_compat` flag.
 - Each game lives in its own [Durable Object](https://developers.cloudflare.com/durable-objects/)
   (`worker/Game.js`), which saves its moves and plays them again in the engine of `app/` when it
@@ -107,7 +108,8 @@ needs no build step, no variable and no secret.
 
 - the engine (`app/`), the routes (`routes/`) and the storage of the games (`worker/`), with fake
   Durable Objects;
-- the helpers of the page (`public/utils.test.js`), with a fake `fetch`;
+- the helpers of the page (`public/utils.test.js`, `public/texts.test.js`) and its calls to the
+  API (`public/api.test.js`), with a fake `fetch`;
 - the whole Worker (`index.test.js`), run in the local Workers runtime by `createTestHarness` of
   Wrangler, with its files and its Durable Objects;
 - the commit message checks, which call Git.

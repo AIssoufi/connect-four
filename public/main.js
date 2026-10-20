@@ -1,9 +1,11 @@
 import {
   COLUMN_PICKER_CLASS_NAME, GAME_ROUTE, ROW_CLASS_NAME, SELECTORS,
 } from './constants.js';
+import { getPlayRoute, requestGame } from './api.js';
+import { getColumnLabel, getMoveRefusal, getStatusText } from './texts.js';
 import {
-  getBoardKey, getCellClassName, getColumnLabel, getColumnNumber, getMoveRefusal, getNextPlayer,
-  getPlayRoute, getStatusText, isBoardSize, isColumnFull, isGameOver, requestGame,
+  getBoardKey, getCellClassName, getColumnNumber, getNextPlayer, isBoardSize, isColumnFull,
+  isGameOver,
 } from './utils.js';
 
 /** The game status shown on the page, `undefined` until a game starts. */
@@ -123,7 +125,8 @@ const renderControlPanel = (game) => {
   Array.from(panelElem.children).forEach((pickerElem, columnIndex) => {
     const isFull = isColumnFull({ board: game.board, columnIndex });
     pickerElem.setAttribute('aria-label', getColumnLabel({ columnIndex, isFull }));
-    pickerElem.setAttribute('aria-disabled', String(!canPlay || isFull));
+    const isPickerDisabled = !canPlay || isFull;
+    pickerElem.setAttribute('aria-disabled', String(isPickerDisabled));
   });
 };
 
