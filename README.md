@@ -27,6 +27,7 @@ Each visitor plays their own game, and reloading the page starts a new one.
 - The page is plain HTML, CSS and JavaScript, with no build step.
 - [Vitest](https://vitest.dev/) runs the tests, ESLint 10 and Redocly CLI lint the code and the
   OpenAPI document, and GitHub Actions runs them on every pull request.
+- [pnpm 12](https://pnpm.io/) installs the dependencies.
 
 [docs/decisions/](docs/decisions/) records why, one decision per file.
 
@@ -72,25 +73,32 @@ explains these choices.
 ## Run locally
 
 ```sh
-npm ci
-npm run dev
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-`npm run dev` runs the Worker, its files and its Durable Objects with `wrangler dev`, at
+It needs [pnpm](https://pnpm.io/installation): any installed version switches by itself to the
+one that the `packageManager` field of `package.json` pins. pnpm only installs versions published
+at least 7 days earlier, and runs no install script of a dependency (`pnpm-workspace.yaml`).
+
+`pnpm dev` runs the Worker, its files and its Durable Objects with `wrangler dev`, at
 <http://localhost:8787> by default, and keeps the games in `.wrangler/`.
 
 ## Deploy
 
 [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) deploys `master` on
-Cloudflare after each merge, on the custom domain `connect-four.issoufi.fr`.
+Cloudflare after each merge, on the custom domain `connect-four.issoufi.fr`. It installs the
+dependencies with pnpm, from `pnpm-lock.yaml`, and its `PNPM_VERSION` build variable must follow
+the `packageManager` field of `package.json`.
 
-`npm run deploy` deploys the Worker by hand with `wrangler deploy`. It needs a Cloudflare account
-that holds the `issoufi.fr` zone: log in with `npx wrangler login`, or set `CLOUDFLARE_API_TOKEN`
-and `CLOUDFLARE_ACCOUNT_ID`. The Worker needs no build step, no variable and no secret.
+`pnpm run deploy` deploys the Worker by hand with `wrangler deploy` (`pnpm deploy` is a command of
+pnpm itself). It needs a Cloudflare account that holds the `issoufi.fr` zone: log in with
+`pnpm exec wrangler login`, or set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The Worker
+needs no build step, no variable and no secret.
 
 ## Run the tests
 
-`npm test` runs the Vitest tests:
+`pnpm test` runs the Vitest tests:
 
 - the engine (`app/`), the routes (`routes/`) and the storage of the games (`worker/`), with fake
   Durable Objects;
@@ -103,14 +111,14 @@ version used in development and in the CI: 24, an LTS release.
 
 ## Lint
 
-`npm run lint` runs both checks, and fails on any error or warning:
+`pnpm lint` runs both checks, and fails on any error or warning:
 
-- `npm run lint:js` checks every JavaScript file with ESLint 10 and its flat configuration,
+- `pnpm lint:js` checks every JavaScript file with ESLint 10 and its flat configuration,
   `eslint.config.js`: the recommended rules, plus the rules of Airbnb base that the code was
   written against, the layout ones from [ESLint Stylistic](https://eslint.style/). The page
   scripts of `public/` are linted with the browser globals, and the other files with the Node.js
   ones.
-- `npm run lint:api` checks the OpenAPI document with the recommended rules of
+- `pnpm lint:api` checks the OpenAPI document with the recommended rules of
   [Redocly CLI](https://redocly.com/docs/cli/), each warning made an error (`redocly.yaml`).
   `.redocly.lint-ignore.yaml` lists the problems ignored on purpose, each with its reason.
 
@@ -118,15 +126,18 @@ version used in development and in the CI: 24, an LTS release.
 
 GitHub Actions runs `.github/workflows/ci.yml` on every pull request and every push to `master`:
 
-- `npm ci`, `npm run lint` and `npm test` on the Node.js version of `.nvmrc`;
-- `npm ci` and `npm test` on Node.js 22 and 26: the oldest major release that `engines` accepts
-  and the newest one released. Dependabot does not update this matrix: add each new major
-  release of Node.js to it by hand.
+- `pnpm install --frozen-lockfile`, `pnpm lint` and `pnpm test` on the Node.js version of
+  `.nvmrc`;
+- `pnpm install --frozen-lockfile` and `pnpm test` on Node.js 22 and 26: the oldest major release
+  that `engines` accepts and the newest one released. Dependabot does not update this matrix:
+  add each new major release of Node.js to it by hand.
+
+Each job sets pnpm up with `pnpm/action-setup`, which reads the `packageManager` field.
 
 `.github/workflows/commit-messages.yml` checks the commit messages of every pull request, and
 its title unless a bot opened it, with commitlint (see [Commit messages](#commit-messages)).
 
-Dependabot checks npm and GitHub Actions every week, for releases at least a week old
+Dependabot checks the npm packages and GitHub Actions every week, for releases at least a week old
 (`.github/dependabot.yml`): one pull request for the npm minor and patch updates, and one for the
 GitHub Actions updates. It proposes no npm major update: each one goes through its own ticket.
 
@@ -146,7 +157,7 @@ Co-Authored-By: …
 - commitlint checks each commit in the `commit-msg` Git hook, and in the CI. The CI also checks
   the title of a pull request, without the trailer, unless a bot opened it.
 - Merge commits and the commits of Dependabot and release-please are not checked.
-- `npm install` sets up the hooks with Husky. On a branch named after a ticket, such as `C4-20`,
+- `pnpm install` sets up the hooks with Husky. On a branch named after a ticket, such as `C4-20`,
   the `prepare-commit-msg` hook adds `Refs: C4-20` to a message that has no `Refs:` line yet.
 
 ## History

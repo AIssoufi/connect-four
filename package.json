@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "lint": "npm run lint:js && npm run lint:api",
+    "lint": "pnpm run lint:js && pnpm run lint:api",
     "lint:js": "eslint . --max-warnings 0",
     "lint:api": "redocly lint",
     "test": "vitest run",
@@ -33,5 +33,6 @@
   },
   "engines": {
     "node": "^22.13.0 || ^24.0.0 || >=26.0.0"
-  }
+  },
+  "packageManager": "pnpm@12.14.0"
 }
