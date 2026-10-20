@@ -1,5 +1,6 @@
 import {
-  CELL_CLASS_NAME, EMPTY_CELL, GAME_STATES, PLAYER_COLOR_NAMES, UNKNOWN_POSITION_NUMBER,
+  CELL_CLASS_NAME, COLUMN_NAVIGATION_KEYS, EMPTY_CELL, GAME_STATES, PLAYER_COLOR_NAMES, TAB_INDEX,
+  UNKNOWN_POSITION_NUMBER,
 } from './constants.js';
 
 /**
@@ -114,6 +115,57 @@ export const isColumnFull = ({ board, columnIndex }) => {
 export const getPositionNumber = (index) => {
   const isValidIndex = Number.isInteger(index) && index >= 0;
   return isValidIndex ? index + 1 : UNKNOWN_POSITION_NUMBER;
+};
+
+/**
+ * Finds the column button to focus after a key press, wrapping around at both ends.
+ * @param {object} params
+ * @param {string} params.key - The `key` of the keyboard event.
+ * @param {number} params.currentIndex - The index of the focused button. The first column stands
+ *   in for a missing index or one out of range.
+ * @param {number} params.columnCount - The number of column buttons.
+ * @returns {number|null} The index of the button to focus, or `null` when the key does not move
+ *   the focus or there is no button.
+ * @example getNextColumnIndex({ key: 'ArrowRight', currentIndex: 6, columnCount: 7 }) // 0
+ */
+export const getNextColumnIndex = ({ key, currentIndex, columnCount }) => {
+  const hasColumns = Number.isInteger(columnCount) && columnCount > 0;
+  if (!hasColumns) {
+    return null;
+  }
+
+  const isValidIndex = Number.isInteger(currentIndex)
+    && currentIndex >= 0 && currentIndex < columnCount;
+  const fromIndex = isValidIndex ? currentIndex : 0;
+  const lastIndex = columnCount - 1;
+
+  switch (key) {
+    case COLUMN_NAVIGATION_KEYS.previous:
+      return fromIndex === 0 ? lastIndex : fromIndex - 1;
+    case COLUMN_NAVIGATION_KEYS.next:
+      return fromIndex === lastIndex ? 0 : fromIndex + 1;
+    case COLUMN_NAVIGATION_KEYS.first:
+      return 0;
+    case COLUMN_NAVIGATION_KEYS.last:
+      return lastIndex;
+    default:
+      return null;
+  }
+};
+
+/**
+ * Gives a column button the `tabindex` that lets the Tab key reach only the focused column.
+ * @param {object} params
+ * @param {number} params.columnIndex - The index of the button.
+ * @param {number} params.focusedIndex - The index of the focused column.
+ * @returns {number} `0` for the focused column, `-1` for the others and for a missing or invalid
+ *   index.
+ * @example getColumnTabIndex({ columnIndex: 2, focusedIndex: 2 }) // 0
+ */
+export const getColumnTabIndex = ({ columnIndex, focusedIndex }) => {
+  const isFocusedColumn = Number.isInteger(columnIndex) && columnIndex >= 0
+    && columnIndex === focusedIndex;
+  return isFocusedColumn ? TAB_INDEX.reachable : TAB_INDEX.skipped;
 };
 
 /**

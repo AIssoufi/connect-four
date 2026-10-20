@@ -1,11 +1,14 @@
 import {
-  COLUMN_PICKER_CLASS_NAME, GAME_ROUTE, ROW_CLASS_NAME, SELECTORS,
+  COLUMN_PICKER_CLASS_NAME, CURRENT_PLAYER_CLASS_PREFIX, GAME_ROUTE, PICKER_TOKEN_CLASS_NAME,
+  ROW_CLASS_NAME, SELECTORS, VISUALLY_HIDDEN_CLASS_NAME,
 } from './constants.js';
 import { getPlayRoute, requestGame } from './api.js';
-import { getColumnLabel, getMoveRefusal, getStatusText } from './texts.js';
 import {
-  getBoardKey, getCellClassName, getPositionNumber, getNextPlayer, isBoardSize, isColumnFull,
-  isGameOver,
+  getCellLabel, getColumnLabel, getMoveRefusal, getStatusText,
+} from './texts.js';
+import {
+  getBoardKey, getCellClassName, getColumnTabIndex, getNextColumnIndex, getNextPlayer,
+  getPositionNumber, isBoardSize, isColumnFull, isGameOver,
 } from './utils.js';
 
 /** The game status shown on the page, `undefined` until a game starts. */
@@ -16,6 +19,9 @@ let drawnBoardKey;
 
 /** Whether a request to the API waits for its answer: the page sends one at a time. */
 let isRequestPending = false;
+
+/** The column button that the Tab key reaches, kept when the control panel is drawn again. */
+let focusedColumnIndex = 0;
 
 /**
  * Writes a text in an element of the page, unless it already shows it, so that a live region
@@ -32,7 +38,8 @@ const showText = ({ selector, text }) => {
 };
 
 /**
- * Draws the rows and the cells of an empty board, once per board size.
+ * Draws the rows and the cells of an empty board, once per board size. Each cell holds a hidden
+ * text that a screen reader reads.
  * @param {object} params
  * @param {HTMLElement} params.boardElem - The element of the board.
  * @param {number} params.rowCount - The number of rows.
@@ -42,11 +49,16 @@ const buildBoard = ({ boardElem, rowCount, columnCount }) => {
   const rowElems = Array.from({ length: rowCount }, (row, rowIndex) => {
     const rowElem = document.createElement('div');
     rowElem.className = ROW_CLASS_NAME;
+    rowElem.setAttribute('role', 'row');
 
     for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
       const cellElem = document.createElement('div');
+      const labelElem = document.createElement('span');
+      cellElem.setAttribute('role', 'cell');
       cellElem.dataset.row = rowIndex;
       cellElem.dataset.column = columnIndex;
+      labelElem.className = VISUALLY_HIDDEN_CLASS_NAME;
+      cellElem.appendChild(labelElem);
       rowElem.appendChild(cellElem);
     }
 
@@ -79,7 +91,9 @@ const renderBoard = (board) => {
 
   board.forEach((row, rowIndex) => {
     row.forEach((token, columnIndex) => {
-      boardElem.children[rowIndex].children[columnIndex].className = getCellClassName(token);
+      const cellElem = boardElem.children[rowIndex].children[columnIndex];
+      cellElem.className = getCellClassName(token);
+      cellElem.firstElementChild.textContent = getCellLabel({ rowIndex, columnIndex, token });
     });
   });
 
@@ -87,21 +101,74 @@ const renderBoard = (board) => {
 };
 
 /**
- * Draws one placeholder token per column, where a click drops a token. A click on the control
- * panel finds the column from the `data-column` attribute.
+ * Draws one button per column, with a placeholder token, where a click, Enter or Space drops a
+ * token. A click on the control panel finds the column from the `data-column` attribute. Only
+ * the focused column is in the Tab order: the arrow keys move between the others.
  * @param {object} params
  * @param {HTMLElement} params.panelElem - The control panel.
  * @param {number} params.columnCount - The number of columns of the board.
  */
 const buildColumnPickers = ({ panelElem, columnCount }) => {
+  const isFocusedColumnGone = focusedColumnIndex >= columnCount;
+  if (isFocusedColumnGone) {
+    focusedColumnIndex = 0;
+  }
+
   const pickerElems = Array.from({ length: columnCount }, (column, columnIndex) => {
-    const pickerElem = document.createElement('div');
+    const pickerElem = document.createElement('button');
+    const tokenElem = document.createElement('span');
+    pickerElem.type = 'button';
     pickerElem.className = COLUMN_PICKER_CLASS_NAME;
     pickerElem.dataset.column = columnIndex;
+    const tabIndex = getColumnTabIndex({ columnIndex, focusedIndex: focusedColumnIndex });
+    pickerElem.setAttribute('tabindex', tabIndex);
+    tokenElem.className = PICKER_TOKEN_CLASS_NAME;
+    pickerElem.appendChild(tokenElem);
     return pickerElem;
   });
 
   panelElem.replaceChildren(...pickerElems);
+};
+
+/**
+ * Makes the button of the focused column the only one that the Tab key reaches, and remembers
+ * it, so that Tab comes back to the column focused last.
+ * @param {FocusEvent} event - The focus entering the control panel or moving inside it.
+ */
+const onControlPanelFocusIn = (event) => {
+  const pickerElem = event.target.closest(SELECTORS.columnPicker);
+  if (!pickerElem) {
+    return;
+  }
+
+  focusedColumnIndex = Number(pickerElem.dataset.column);
+  Array.from(event.currentTarget.children).forEach((buttonElem, columnIndex) => {
+    const tabIndex = getColumnTabIndex({ columnIndex, focusedIndex: focusedColumnIndex });
+    buttonElem.setAttribute('tabindex', tabIndex);
+  });
+};
+
+/**
+ * Moves the focus between the column buttons with the arrow keys, Home and End, and leaves the
+ * browser shortcuts made with Alt, Ctrl or Cmd to the browser.
+ * @param {KeyboardEvent} event - The key press, listened on the control panel.
+ */
+const onControlPanelKeyDown = (event) => {
+  const isBrowserShortcut = event.altKey || event.ctrlKey || event.metaKey;
+  if (isBrowserShortcut) {
+    return;
+  }
+
+  const buttonElems = event.currentTarget.children;
+  const nextIndex = getNextColumnIndex({
+    key: event.key, currentIndex: focusedColumnIndex, columnCount: buttonElems.length,
+  });
+  if (nextIndex === null) {
+    return;
+  }
+
+  event.preventDefault();
+  buttonElems[nextIndex].focus();
 };
 
 /**
@@ -119,7 +186,7 @@ const renderControlPanel = (game) => {
   const isOver = isGameOver(game);
   const nextPlayer = getNextPlayer(game);
   const canPlay = !isOver && nextPlayer !== null;
-  panelElem.className = canPlay ? `current-player-is-${nextPlayer}` : '';
+  panelElem.className = canPlay ? `${CURRENT_PLAYER_CLASS_PREFIX}${nextPlayer}` : '';
   panelElem.setAttribute('aria-disabled', String(!canPlay));
 
   Array.from(panelElem.children).forEach((pickerElem, columnIndex) => {
@@ -178,7 +245,7 @@ const startGame = () => sendGameRequest({ route: GAME_ROUTE, init: { method: 'PO
  * @param {MouseEvent} event - The click, listened on the control panel.
  */
 const onControlPanelClick = (event) => {
-  const pickerElem = event.target.closest('[data-column]');
+  const pickerElem = event.target.closest(SELECTORS.columnPicker);
   if (!pickerElem) {
     return;
   }
@@ -204,7 +271,10 @@ const onControlPanelClick = (event) => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.querySelector(SELECTORS.controlPanel).addEventListener('click', onControlPanelClick);
+  const panelElem = document.querySelector(SELECTORS.controlPanel);
+  panelElem.addEventListener('click', onControlPanelClick);
+  panelElem.addEventListener('focusin', onControlPanelFocusIn);
+  panelElem.addEventListener('keydown', onControlPanelKeyDown);
   document.querySelector(SELECTORS.newGameButton).addEventListener('click', startGame);
   startGame();
 });

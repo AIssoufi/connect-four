@@ -1,9 +1,9 @@
 import {
-  COLUMN_LABEL, DRAW_TEXT, FULL_COLUMN_LABEL, FULL_COLUMN_MESSAGE, GAME_OVER_MESSAGE, GAME_STATES,
-  TURN_TEXT, WIN_TEXT,
+  CELL_LABEL, COLUMN_LABEL, DRAW_TEXT, EMPTY_CELL_NAME, FULL_COLUMN_LABEL, FULL_COLUMN_MESSAGE,
+  GAME_OVER_MESSAGE, GAME_STATES, TURN_TEXT, WIN_TEXT,
 } from './constants.js';
 import {
-  getPositionNumber, getNextPlayer, getPlayerColorName, isColumnFull, isGameOver,
+  getNextPlayer, getPlayerColorName, getPositionNumber, isColumnFull, isGameOver,
 } from './utils.js';
 
 /** Matches a placeholder of a text template, such as `{color}`, and captures its name. */
@@ -96,3 +96,24 @@ export const getMoveRefusal = ({ game, columnIndex }) => {
 
   return null;
 };
+
+/**
+ * Builds the text that a screen reader reads for a cell of the board.
+ * @param {object} params
+ * @param {number} params.rowIndex - The index of the row, from 0 for the top one.
+ * @param {number} params.columnIndex - The index of the column, from 0 for the left one.
+ * @param {string|number} params.token - The cell value: a player id, or `0` when empty.
+ * @returns {string} The row and the column, numbered from 1, then the color of the token. A value
+ *   that is no known player reads as an empty cell, as the board draws it, and `?` stands for a
+ *   missing or invalid row or column.
+ * @example getCellLabel({ rowIndex: 2, columnIndex: 1, token: 'red' })
+ *   // 'Ligne 3, colonne 2 : rouge'
+ */
+export const getCellLabel = ({ rowIndex, columnIndex, token }) => fillText({
+  template: CELL_LABEL,
+  values: {
+    row: getPositionNumber(rowIndex),
+    column: getPositionNumber(columnIndex),
+    content: getPlayerColorName(token) ?? EMPTY_CELL_NAME,
+  },
+});

@@ -2,8 +2,13 @@ html {
   --red-token-color: brown;
   --yellow-token-color: yellow;
   --empty-cell-color: gray;
-  --token-size: 50px;
   --board-color: rgba(10, 53, 220, 1);
+  --board-width: min(90vw, 700px);
+  /* 58 px, border included, on the board at its full width of 700 px. */
+  --token-size: calc(var(--board-width) * 58 / 700);
+  --token-border-width: calc(var(--token-size) / 14);
+  --token-marker-color: rgba(0, 0, 0, 0.35);
+  --focus-ring-color: black;
   --error-text-color: #a00000;
   --disabled-opacity: 0.4;
 }
@@ -23,10 +28,12 @@ body main {
 }
 
 body main [class*="token"] {
+  position: relative;
+  box-sizing: border-box;
   height: var(--token-size);
   width: var(--token-size);
   border-radius: 50%;
-  border: 4px inset rgba(10, 52, 220, 0.3);
+  border: var(--token-border-width) inset rgba(10, 52, 220, 0.3);
 }
 
 #board {
@@ -36,8 +43,8 @@ body main [class*="token"] {
   background-color: var(--board-color);
   border-radius: 20px;
   box-shadow: 5px 5px 29px 0px rgba(109, 109, 109, 0.8);
-  height: 600px;
-  width: 700px;
+  width: var(--board-width);
+  aspect-ratio: 7 / 6;
 }
 #board .row {
   display: flex;
@@ -58,22 +65,73 @@ body main .yellow-token, #board .column.yellow-token {
   background-color: var(--yellow-token-color);
 }
 
+/*
+ * A dot on the red tokens and a ring on the yellow ones tell them apart without their color, on
+ * the board and in the preview of the hovered or focused column that can be played.
+ */
+.red-token::after,
+.yellow-token::after,
+#control-panel .column-button:not([aria-disabled="true"]):is(:hover, :focus-visible) .token::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
+  border-radius: 50%;
+}
+
+.red-token::after,
+#control-panel.current-player-is-red
+  .column-button:not([aria-disabled="true"]):is(:hover, :focus-visible) .token::after {
+  height: 30%;
+  width: 30%;
+  background-color: var(--token-marker-color);
+}
+
+.yellow-token::after,
+#control-panel.current-player-is-yellow
+  .column-button:not([aria-disabled="true"]):is(:hover, :focus-visible) .token::after {
+  height: 50%;
+  width: 50%;
+  border: var(--token-border-width) solid var(--token-marker-color);
+}
+
 #control-panel {
-  width: 700px;
+  width: var(--board-width);
   display: flex;
   justify-content: space-around;
-  margin: 20px 0;
+  margin: 12px 0;
+}
+
+#control-panel .column-button {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  padding: 8px 0;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  cursor: pointer;
+}
+
+#control-panel .column-button:focus-visible {
+  outline: 3px solid var(--focus-ring-color);
+  outline-offset: -3px;
 }
 
 #control-panel [class*="token"] {
   border-style: dashed;
 }
 
-#control-panel.current-player-is-red [class*="token"]:not([aria-disabled="true"]):hover {
+#control-panel.current-player-is-red
+  .column-button:not([aria-disabled="true"]):is(:hover, :focus-visible) .token {
   background-color: var(--red-token-color);
 }
 
-#control-panel.current-player-is-yellow [class*="token"]:not([aria-disabled="true"]):hover {
+#control-panel.current-player-is-yellow
+  .column-button:not([aria-disabled="true"]):is(:hover, :focus-visible) .token {
   background-color: var(--yellow-token-color);
 }
 
@@ -99,4 +157,17 @@ body main .yellow-token, #board .column.yellow-token {
 
 #game-message {
   color: var(--error-text-color);
+}
+
+/* Read by screen readers, hidden from sight. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
