@@ -18,6 +18,11 @@ The game engine does not depend on Express, and each instance of it is a separat
 `npm test` runs the Vitest tests of the engine (`app/`) and of the routes (`routes/`). They need
 Node.js 22.12+, 24 or 26+ (the `engines` field of `package.json`).
 
+## Lint
+
+`npm run lint` checks every JavaScript file with ESLint and the Airbnb base rules, and fails on
+any error or warning. The page script of `public/` is linted with the browser globals.
+
 ## Vidéo de démonstration
 
 [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/T-oEjFyau7A/0.jpg)](http://www.youtube.com/watch?v=T-oEjFyau7A)
