@@ -1,32 +1,14 @@
-// Dependencies
-const express = require('express');
-const swaggerUi = require('swagger-ui-express');
-const swaggerJSDoc = require('swagger-jsdoc');
+// The entry point of the Cloudflare Worker. The platform serves the files of `public/` first;
+// every other request reaches the Express app, which keeps each game in a `Game` Durable Object.
+import { httpServerHandler } from 'cloudflare:node';
+import { env } from 'cloudflare:workers';
+import createApp from './routes/createApp';
+import createGameStore from './worker/createGameStore';
+import { SERVER_PORT } from './worker/constants';
 
-// Init
-const app = express();
-const swaggerOptions = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'Connect 4 - API',
-      version: '1.0.0',
-    },
-  },
-  apis: ['./routes/index.js'],
-  basePath: '/game',
-};
-const swaggerSpec = swaggerJSDoc(swaggerOptions);
+const app = createApp({ games: createGameStore({ namespace: env.GAMES }) });
+app.listen(SERVER_PORT);
 
-// Routes
-const createGameRouter = require('./routes');
+export { default as Game } from './worker/Game';
 
-// MiddleWare
-app.use('/', express.static(`${__dirname}/public`));
-app.use('/game', createGameRouter());
-app.use('/api/v1', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-app.listen(3000, () => {
-  // eslint-disable-next-line no-console
-  console.log('http://localhost:3000');
-});
+export default httpServerHandler({ port: SERVER_PORT });

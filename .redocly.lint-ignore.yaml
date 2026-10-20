@@ -1,0 +1,6 @@
+# This file instructs Redocly's linter to ignore the rules contained for specific parts of your API.
+# See https://redocly.com/docs/cli/ for more information.
+public/api/v1/openapi.yaml:
+  # Starting a game takes no input, so this route has no client error to document.
+  operation-4xx-response:
+    - '#/paths/~1game/post/responses'

@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "connect-four",
+  "main": "index.js",
+  "compatibility_date": "2026-10-01",
+  // Lets Express run on the Worker, with `httpServerHandler` of `cloudflare:node`.
+  "compatibility_flags": ["nodejs_compat"],
+  // The page, its script and the API docs, served before the Worker runs.
+  "assets": {
+    "directory": "public"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "GAMES", "class_name": "Game" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Game"] }],
+  "routes": [{ "pattern": "connect-four.issoufi.fr", "custom_domain": true }],
+  "observability": {
+    "enabled": true
+  }
+}

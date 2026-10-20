@@ -1,5 +1,3 @@
-let setIntervalId;
-
 const renderBoard = (matrix) => {
   const rowClassName = 'row';
   const columnClassName = 'column token';
@@ -38,6 +36,7 @@ const renderBoard = (matrix) => {
 /**
  * Renders one placeholder token per column; a click plays the next player in that column.
  * @param {object} params
+ * @param {string} params.gameId - The id of the game to play.
  * @param {Array<Array<string|number>>} params.board - The board, top row first.
  * @param {string[]} params.players - The ids of the players.
  * @param {string} params.lastPlayerWhoPlayed - The player who made the last move.
@@ -45,7 +44,7 @@ const renderBoard = (matrix) => {
  *   move returns.
  */
 const renderPossibilities = ({
-  board, players, lastPlayerWhoPlayed, onGameStatus,
+  gameId, board, players, lastPlayerWhoPlayed, onGameStatus,
 }) => {
   const placeholderTokenClassName = 'token';
   const posElem = document.querySelector('#control-panel');
@@ -58,16 +57,18 @@ const renderPossibilities = ({
 
     tokenElem.className = placeholderTokenClassName;
     tokenElem.addEventListener('click', () => {
-      const urlSearchParams = new URLSearchParams();
+      fetch(`/game/${gameId}/play`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ playerId: nexPlayer, column: i + 1 }),
+      })
+        .then((response) => {
+          // A refused move, such as one in a full column, leaves the board as it is.
+          if (!response.ok) {
+            return undefined;
+          }
 
-      urlSearchParams.append('playerid', nexPlayer);
-      urlSearchParams.append('column', i + 1);
-
-      const url = `/game/play?${urlSearchParams.toString()}`;
-      fetch(url)
-        .then((response) => response.json())
-        .then((statusGame) => {
-          onGameStatus(statusGame);
+          return response.json().then(onGameStatus);
         });
     });
 
@@ -77,33 +78,28 @@ const renderPossibilities = ({
 };
 
 const updateBoard = ({
-  board, players, winner, lastPlayerWhoPlayed,
+  id, board, players, winner, lastPlayerWhoPlayed,
 }) => {
   renderBoard(board);
   renderPossibilities({
-    board, players, lastPlayerWhoPlayed, onGameStatus: updateBoard,
+    gameId: id, board, players, lastPlayerWhoPlayed, onGameStatus: updateBoard,
   });
 
   const gameIsEnd = players.some((player) => player === winner);
   if (gameIsEnd) {
     // eslint-disable-next-line no-alert
     alert(`Winner : ${winner}`);
-
-    clearInterval(setIntervalId);
   }
 };
 
-const refreshBoard = () => {
-  fetch('/game/status')
-    .then((response) => response.json())
-    .then((statusGame) => {
-      updateBoard(statusGame);
-    });
-};
-
+/**
+ * Starts a new game for this page: each visitor plays their own game, and reloading the page
+ * starts another one. Only this page plays the game, so the board needs no polling.
+ */
 const start = () => {
-  refreshBoard();
-  setIntervalId = setInterval(refreshBoard, 2000);
+  fetch('/game', { method: 'POST' })
+    .then((response) => response.json())
+    .then(updateBoard);
 };
 
 document.addEventListener('DOMContentLoaded', () => {

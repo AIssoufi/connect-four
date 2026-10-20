@@ -1,0 +1,291 @@
+openapi: 3.1.0
+info:
+  title: Connect Four API
+  version: 2.0.0
+  description: >-
+    Plays games of Connect Four between a red and a yellow player, red first. Each game has its
+    own id: start one with `POST /game`, then read it and play its moves with that id. A game
+    ends when a player aligns four tokens, or in a draw when the board is full.
+  license:
+    name: ISC
+    identifier: ISC
+servers:
+  - url: /
+    description: This site
+# Anyone may start and play a game: the API has no authentication.
+security: []
+tags:
+  - name: game
+    description: Start, read and play a game.
+paths:
+  /game:
+    post:
+      tags:
+        - game
+      operationId: startGame
+      summary: Start a new game
+      description: Starts an empty game, which only its id gives access to.
+      responses:
+        '201':
+          description: The new game, where red plays first.
+          headers:
+            Location:
+              description: The path of the status of the new game.
+              schema:
+                type: string
+                examples:
+                  - /game/0000017f1f5c4bd2a16a4b3a7c5e9d8f0000017f1f5c4bd2a16a4b3a7c5e9d8f/status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+              examples:
+                newGame:
+                  $ref: '#/components/examples/NewGame'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /game/{gameId}/status:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+    get:
+      tags:
+        - game
+      operationId: getGameStatus
+      summary: Read a game
+      description: Gives the board, the tokens left, the last player and the result of a game.
+      responses:
+        '200':
+          description: The game.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+              examples:
+                newGame:
+                  $ref: '#/components/examples/NewGame'
+        '404':
+          $ref: '#/components/responses/GameNotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /game/{gameId}/play:
+    parameters:
+      - $ref: '#/components/parameters/GameId'
+    post:
+      tags:
+        - game
+      operationId: playMove
+      summary: Play a move
+      description: >-
+        Drops a token of a player in a column, then gives the game. A refused move does not
+        change the game.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Move'
+            examples:
+              redInTheMiddle:
+                summary: Red drops a token in the middle column
+                value:
+                  playerId: red
+                  column: 4
+      responses:
+        '200':
+          description: The game after the move, which may be won or a draw.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          description: >-
+            The move is refused: the body is not valid JSON or not a valid move, or the move
+            breaks a rule (the game is over, it is the other player's turn, the column is
+            full).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidColumn:
+                  summary: A column out of the board
+                  value:
+                    message: The column must be an integer between 1 and 7.
+                notYourTurn:
+                  summary: The same player plays twice
+                  value:
+                    message: "red: it's not your turn!"
+                fullColumn:
+                  summary: A full column
+                  value:
+                    message: The column 1 is full!
+        '404':
+          $ref: '#/components/responses/GameNotFound'
+        '413':
+          description: The body is larger than the 100 kB that the API reads.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                tooLarge:
+                  summary: A body above the limit
+                  value:
+                    message: request entity too large
+        '500':
+          $ref: '#/components/responses/ServerError'
+components:
+  parameters:
+    GameId:
+      name: gameId
+      in: path
+      required: true
+      description: The id of the game, as `POST /game` gave it.
+      schema:
+        type: string
+        pattern: '^[0-9a-f]{64}$'
+  schemas:
+    PlayerId:
+      description: A player.
+      type: string
+      enum:
+        - red
+        - yellow
+    Cell:
+      description: A cell of the board, empty or with the token of a player.
+      oneOf:
+        - description: An empty cell.
+          const: 0
+        - $ref: '#/components/schemas/PlayerId'
+    Board:
+      description: The 6 rows of the board, top row first, each with its 7 columns, left first.
+      type: array
+      minItems: 6
+      maxItems: 6
+      items:
+        type: array
+        minItems: 7
+        maxItems: 7
+        items:
+          $ref: '#/components/schemas/Cell'
+    Game:
+      description: A game and its result.
+      type: object
+      required:
+        - id
+        - players
+        - tokens
+        - lastPlayerWhoPlayed
+        - winner
+        - state
+        - board
+      properties:
+        id:
+          description: The id of the game, for its other routes.
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        players:
+          description: The players, in the order they play.
+          type: array
+          items:
+            $ref: '#/components/schemas/PlayerId'
+        tokens:
+          description: The tokens left to each player, 21 at the start.
+          type: object
+          required:
+            - red
+            - yellow
+          properties:
+            red:
+              type: integer
+              minimum: 0
+              maximum: 21
+            yellow:
+              type: integer
+              minimum: 0
+              maximum: 21
+        lastPlayerWhoPlayed:
+          description: The player who made the last move, `nobody` before the first move.
+          oneOf:
+            - $ref: '#/components/schemas/PlayerId'
+            - const: nobody
+        winner:
+          description: The player who aligned four tokens, `no winner` otherwise.
+          oneOf:
+            - $ref: '#/components/schemas/PlayerId'
+            - const: no winner
+        state:
+          description: Whether the game goes on, is won or ended in a draw.
+          type: string
+          enum:
+            - playing
+            - won
+            - draw
+        board:
+          $ref: '#/components/schemas/Board'
+    Move:
+      description: A token that a player drops in a column.
+      type: object
+      required:
+        - playerId
+        - column
+      properties:
+        playerId:
+          $ref: '#/components/schemas/PlayerId'
+        column:
+          description: The column, from 1 (left) to 7 (right).
+          type: integer
+          minimum: 1
+          maximum: 7
+    Error:
+      description: Why a request is refused.
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+  responses:
+    GameNotFound:
+      description: No game has this id.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            unknownGame:
+              summary: An id that no game has
+              value:
+                message: No game has this id.
+    ServerError:
+      description: The server failed. The details stay in the logs of the Worker.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            serverError:
+              summary: Any failure of the server
+              value:
+                message: Server error.
+  examples:
+    NewGame:
+      summary: A game before the first move
+      value:
+        id: 0000017f1f5c4bd2a16a4b3a7c5e9d8f0000017f1f5c4bd2a16a4b3a7c5e9d8f
+        players:
+          - red
+          - yellow
+        tokens:
+          red: 21
+          yellow: 21
+        lastPlayerWhoPlayed: nobody
+        winner: no winner
+        state: playing
+        board:
+          - [0, 0, 0, 0, 0, 0, 0]
+          - [0, 0, 0, 0, 0, 0, 0]
+          - [0, 0, 0, 0, 0, 0, 0]
+          - [0, 0, 0, 0, 0, 0, 0]
+          - [0, 0, 0, 0, 0, 0, 0]
+          - [0, 0, 0, 0, 0, 0, 0]

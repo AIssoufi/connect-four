@@ -1,2 +1,5 @@
 # Dependency directories
 node_modules/
+
+# Local state of wrangler dev
+.wrangler/
