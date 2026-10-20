@@ -184,6 +184,36 @@ describe('StoredGame', () => {
       expect(scheduleDeletion).not.toHaveBeenCalled();
     });
 
+    it('refuses a first move of yellow, without saving it', async () => {
+      expect(await game.play({ playerId: 'yellow', column: 1 }))
+        .toEqual({ refusal: "yellow: it's not your turn!" });
+      expect(storage.get(MOVES_STORAGE_KEY)).toEqual([]);
+      expect(await createGame().play({ playerId: 'yellow', column: 1 }))
+        .toEqual({ refusal: "yellow: it's not your turn!" });
+    });
+
+    it('replays a game saved when yellow could play first, and goes on with it', async () => {
+      storage.put(MOVES_STORAGE_KEY, readMoves('Y4 R4'));
+
+      const replayedGame = createGame();
+
+      expect(replayedGame.getStatus()).toMatchObject({ lastPlayerWhoPlayed: 'red', tokens: { red: 20, yellow: 20 } });
+      expect(await replayedGame.play({ playerId: 'red', column: 3 }))
+        .toEqual({ refusal: "red: it's not your turn!" });
+      expect((await replayedGame.play({ playerId: 'yellow', column: 3 })).status)
+        .toMatchObject({ lastPlayerWhoPlayed: 'yellow' });
+    });
+
+    it('lets only red play first in a new game after one that started with yellow', async () => {
+      storage.put(MOVES_STORAGE_KEY, readMoves('Y4'));
+      const replayedGame = createGame();
+
+      await replayedGame.start();
+
+      expect(await replayedGame.play({ playerId: 'yellow', column: 1 }))
+        .toEqual({ refusal: "yellow: it's not your turn!" });
+    });
+
     it('starts again from an empty game', async () => {
       await playMoves({ game, moves: 'R4 Y4' });
 

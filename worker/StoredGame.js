@@ -24,8 +24,11 @@ class StoredGame {
     this.scheduleDeletion = scheduleDeletion;
     this.now = now;
     this.moves = storage.get(MOVES_STORAGE_KEY);
-    this.engine = new Engine();
-    if (this.isStarted()) {
+    // Games saved before red had to play first may start with yellow: they replay with it.
+    const isStarted = this.isStarted();
+    const firstMove = isStarted ? this.moves[0] : undefined;
+    this.engine = new Engine({ firstPlayer: firstMove?.playerId });
+    if (isStarted) {
       this.moves.forEach((move) => this.engine.play(move));
     }
   }
