@@ -12,7 +12,7 @@
     "test": "vitest run",
     "prepare": "husky || true"
   },
-  "author": "Issoufi ADAM <issoufi.adam1@gmail.com>",
+  "author": "ADAM Issoufi <issoufi.adam1@gmail.com>",
   "license": "ISC",
   "dependencies": {
     "express": "^5.3.0"
