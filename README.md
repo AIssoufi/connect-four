@@ -183,3 +183,5 @@ Co-Authored-By: …
 
 [docs/evolution.md](docs/evolution.md) tells how the stack changed, with figures, and
 [docs/decisions/](docs/decisions/) keeps one record per decision.
+[docs/ai-workflow/](docs/ai-workflow/overview.md) explains how agents work on the project, and
+with which tools.
