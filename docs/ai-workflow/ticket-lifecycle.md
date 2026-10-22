@@ -6,9 +6,9 @@ repository, a ticket goes through these steps.
 1. **Issue.** The master creates a GitHub issue in English and adds it to Project 12, with a
    *Status* (*Todo*, *In Progress*, *In Review*, *Done*) and a *Priority* from P0 to P3.
 2. **Start.** The worktree is named `connect-four.C4-<n>`, on the branch `C4-<n>` taken from
-   `origin/master`. The repository has no Worktrunk project hooks, so the worker installs the
-   dependencies itself with `pnpm install --frozen-lockfile`, which also sets up the Git hooks.
-   The ticket moves to *In Progress*.
+   `origin/master`. The `pre-start` hook of `.config/wt.toml` installs the dependencies with
+   `pnpm install --frozen-lockfile`, which also sets up the Git hooks before the first commit
+   (see [Tooling](tooling.md#worktrunk-project-hooks)). The ticket moves to *In Progress*.
 3. **Commits.** Conventional Commits, each with a `Refs: C4-<n>` trailer in its last paragraph.
    On a branch named after a ticket, the `prepare-commit-msg` hook adds that trailer. On every
    branch, the `commit-msg` hook runs commitlint (see the README, *Commit messages*). The worker

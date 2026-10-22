@@ -1,0 +1,4 @@
+# Worktrunk project hooks, run when `wt switch --create` makes a worktree (see `wt hook --help`).
+# `prepare` sets up the Husky hooks, so the first commit of a new worktree is checked.
+[pre-start]
+install = "pnpm install --frozen-lockfile"

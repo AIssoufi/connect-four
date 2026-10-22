@@ -4,8 +4,9 @@
 master and the auditor. In this repository:
 
 - **Conventions reviewer**: checks every change against the shared skills and rules.
-- **Visual tester**: runs the game with `pnpm dev` (`wrangler dev`, at <http://localhost:8787> by
-  default) and checks the page and the API docs at four widths. It is skipped when a change
+- **Visual tester**: runs the game with `pnpm dev` (`wrangler dev`) and opens the URL that its
+  `Ready on` line prints: <http://localhost:8787>, or another free port when another worktree
+  holds 8787. It checks the page and the API docs at four widths. It is skipped when a change
   cannot alter what a visitor sees, such as a change of docs, CI or tests alone.
 - **The master** reads the checks, the diff and the verdict on GitHub before it merges.
 
