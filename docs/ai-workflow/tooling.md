@@ -8,7 +8,7 @@ project tools come from `pnpm-lock.yaml` and `package.json`.
 | --- | --- |
 | [Claude Code][claude-code] | Runs `MASTER-C4`, the `C4-<n>` workers and their reviewers |
 | [cmux][cmux] | One workspace per agent, titled `MASTER-C4` or `C4-<n>`, and their messages |
-| [Worktrunk][worktrunk] | One worktree per ticket, from `origin/master`, with no project hooks |
+| [Worktrunk][worktrunk] | A worktree per ticket from `origin/master`, set up by `.config/wt.toml` |
 | [GitHub][github] | The `C4-` autolink, Project 12 and the `Protect master` ruleset |
 | commitlint 21.2.3, Husky 9.1.7 | Conventional Commits and the `Refs: C4-<n>` trailer |
 | GitHub Actions | `ci.yml` (lint, tests) and `commit-messages.yml` (commitlint) |
@@ -18,11 +18,21 @@ project tools come from `pnpm-lock.yaml` and `package.json`.
 | Redocly CLI 2.62.2 | Lint of the OpenAPI document |
 | Wrangler 4.149.0, Workers Builds | `pnpm dev` locally, and the deployment of `master` |
 
-## Worktrunk without project hooks
+## Worktrunk project hooks
 
-The repository has no `.config/wt.toml`. A new worktree therefore starts without dependencies:
-the worker runs `pnpm install --frozen-lockfile`, whose `prepare` script sets up the Husky hooks.
-No port is assigned per worktree either: `pnpm dev` serves on 8787 unless it is given `--port`.
+`.config/wt.toml` holds one hook, `pre-start`, which runs when `wt switch --create` makes a
+worktree, before any later step:
+
+- **`install`** runs `pnpm install --frozen-lockfile`. Its `prepare` script sets up the Husky
+  hooks, so the first commit of the worktree already gets the `Refs: C4-<n>` trailer and the
+  commitlint check. The frozen lockfile installs the versions it records, and fails rather than
+  change them.
+
+Worktrunk asks once to approve a project command, and again whenever it changes: `--yes` skips the
+question, and `wt hook pre-start` runs the hook again in an existing worktree.
+
+No port is assigned per worktree: `pnpm dev` serves on 8787, and when 8787 is taken, `wrangler dev`
+serves on another free port (8788 for the second server), so several worktrees run it at once.
 
 ## Commit hooks and the ticket reference
 
