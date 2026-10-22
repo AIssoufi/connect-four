@@ -1,0 +1,46 @@
+# Tooling
+
+[Tooling][tooling] gives the tools shared by every repository, their versions on the machine and
+how they hand over to each other. This page gives what this repository adds. The versions of the
+project tools come from `pnpm-lock.yaml` and `package.json`.
+
+| Tool | In this repository |
+| --- | --- |
+| [Claude Code][claude-code] | Runs `MASTER-C4`, the `C4-<n>` workers and their reviewers |
+| [cmux][cmux] | One workspace per agent, titled `MASTER-C4` or `C4-<n>`, and their messages |
+| [Worktrunk][worktrunk] | One worktree per ticket, from `origin/master`, with no project hooks |
+| [GitHub][github] | The `C4-` autolink, Project 12 and the `Protect master` ruleset |
+| commitlint 21.2.3, Husky 9.1.7 | Conventional Commits and the `Refs: C4-<n>` trailer |
+| GitHub Actions | `ci.yml` (lint, tests) and `commit-messages.yml` (commitlint) |
+| Dependabot | Weekly pull requests for npm and GitHub Actions, of releases at least 7 days old |
+| pnpm 12.14.0, Node.js 24 | Install from the frozen lockfile, Node.js from `.nvmrc` |
+| Vitest 5.0.4, ESLint 10.12.0 | Tests, and lint of the code |
+| Redocly CLI 2.62.2 | Lint of the OpenAPI document |
+| Wrangler 4.149.0, Workers Builds | `pnpm dev` locally, and the deployment of `master` |
+
+## Worktrunk without project hooks
+
+The repository has no `.config/wt.toml`. A new worktree therefore starts without dependencies:
+the worker runs `pnpm install --frozen-lockfile`, whose `prepare` script sets up the Husky hooks.
+No port is assigned per worktree either: `pnpm dev` serves on 8787 unless it is given `--port`.
+
+## Commit hooks and the ticket reference
+
+- `.husky/prepare-commit-msg` runs `scripts/commit-message/prepare-commit-msg.js`: on a branch
+  named after a ticket, it adds `Refs: C4-<n>` to a message that has none.
+- `.husky/commit-msg` runs commitlint with `commitlint.config.js`, which adds a rule for that
+  trailer to the conventional config. The CI checks each commit of a pull request the same way,
+  and its title with `commitlint.pr-title.config.js`, since a title carries no trailer.
+- Merge commits and the commits of Dependabot and release-please are not checked.
+
+## Cloudflare
+
+`wrangler.jsonc` describes the Worker, its files, its Durable Objects and the custom domain
+`connect-four.issoufi.fr`. Workers Builds deploys each new commit of `master` and reports a
+`Workers Builds: connect-four` check on it. The README gives the manual deployment.
+
+[tooling]: https://github.com/AIssoufi/AIssoufi/blob/main/docs/agentic-architecture/tooling.md
+[claude-code]: https://github.com/AIssoufi/AIssoufi/blob/main/docs/agentic-architecture/tooling-claude-code.md
+[cmux]: https://github.com/AIssoufi/AIssoufi/blob/main/docs/agentic-architecture/tooling-cmux.md
+[worktrunk]: https://github.com/AIssoufi/AIssoufi/blob/main/docs/agentic-architecture/tooling-worktrunk.md
+[github]: https://github.com/AIssoufi/AIssoufi/blob/main/docs/agentic-architecture/tooling-github.md
