@@ -3,7 +3,22 @@ html {
   --yellow-token-color: yellow;
   --empty-cell-color: gray;
   --board-color: rgba(10, 53, 220, 1);
-  --board-width: min(90vw, 700px);
+  /*
+   * Height of the page around the board and the tokens of the control panel: the header, the game
+   * info, the padding and margins of the control panel and the body (203 px on a desktop, plus some
+   * room for taller fonts).
+   */
+  --board-surroundings-height: 210px;
+  /*
+   * The board also fits the height of the screen: 700 px of width take 658 px of height, the board
+   * (600 px) and a token of the control panel (58 px). The small viewport height (svh) keeps it in
+   * view while a phone's browser shows its toolbars, and does not resize it when they hide.
+   */
+  --board-width: min(
+    90vw,
+    700px,
+    calc((100svh - var(--board-surroundings-height)) * 700 / 658)
+  );
   /* 58 px, border included, on the board at its full width of 700 px. */
   --token-size: calc(var(--board-width) * 58 / 700);
   --token-border-width: calc(var(--token-size) / 14);
