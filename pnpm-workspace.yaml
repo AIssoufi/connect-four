@@ -6,6 +6,15 @@ minimumReleaseAge: 10080
 minimumReleaseAgeExclude:
   - pnpm
   - '@pnpm/*'
+  # body-parser 2.4.0 holds a security fix. Remove this entry from 2026-10-29 on, when the
+  # release is 7 days old
+  - body-parser@2.4.0
+# Security fixes that the packages depending on them do not take yet: express 5.3.0 does not
+# require the fixed body-parser, and miniflare pins an older undici exactly. Remove each one once
+# the lockfile installs a fixed version without it
+overrides:
+  body-parser: ^2.4.0
+  undici: ^7.30.1
 # Runs no install script of a dependency unless it is set to true here. Both scripts only check
 # the binary of the optional package for the current platform, which pnpm installs anyway, and
 # download it when that package is missing
