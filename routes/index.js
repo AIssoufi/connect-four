@@ -13,6 +13,12 @@ const {
 } = require('./constants');
 
 /**
+ * Parses the JSON body of a move. A move is a few bytes, so the parser reads plain bodies only:
+ * a compressed one (a `Content-Encoding` other than `identity`) gets 415 and is never inflated.
+ */
+const parseJsonBody = express.json({ inflate: false });
+
+/**
  * Builds the router of the `/game` routes, which start, read and play games by their id.
  * `public/api/v1/openapi.yaml` documents these routes: keep both in step.
  * @param {object} params
@@ -52,7 +58,7 @@ const createGameRouter = ({ games, startLimiter }) => {
     res.status(OK_STATUS).json({ id: gameId, ...status });
   });
 
-  router.post('/:gameId/play', express.json(), async (req, res) => {
+  router.post('/:gameId/play', parseJsonBody, async (req, res) => {
     const move = parseMove(req.body);
     if (move.error) {
       res.status(BAD_REQUEST_STATUS).json({ message: move.error });

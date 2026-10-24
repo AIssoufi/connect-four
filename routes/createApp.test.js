@@ -1,6 +1,7 @@
 import {
   describe, it, expect, afterEach, vi,
 } from 'vitest';
+import { gzipSync } from 'node:zlib';
 import createApp from './createApp';
 import listen from './testServer';
 import createGameStore from '../worker/createGameStore';
@@ -9,6 +10,9 @@ import { BAD_REQUEST_STATUS, NOT_FOUND_STATUS, SERVER_ERROR_STATUS } from './con
 import { GAME_ID_LENGTH } from '../worker/constants';
 
 const PAYLOAD_TOO_LARGE_STATUS = 413;
+const UNSUPPORTED_MEDIA_TYPE_STATUS = 415;
+/** A valid move, which the parser reads unless its encoding or charset is refused. */
+const MOVE_BODY = JSON.stringify({ playerId: 'red', column: 1 });
 /** Above the 100 kB that `express.json()` accepts by default. */
 const TOO_LARGE_BODY = JSON.stringify({ playerId: 'red', column: 1, padding: 'x'.repeat(200000) });
 /** An id that no game has: the body is refused before the id is looked up. */
@@ -25,9 +29,9 @@ describe('createApp', () => {
     server = await listen(createApp({ games }));
   };
 
-  const postMove = ({ gameId, body }) => fetch(`${server.baseUrl}/game/${gameId}/play`, {
+  const postMove = ({ gameId, body, headers }) => fetch(`${server.baseUrl}/game/${gameId}/play`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body,
   });
 
@@ -77,6 +81,51 @@ describe('createApp', () => {
 
     expect(response.status).toBe(PAYLOAD_TOO_LARGE_STATUS);
     expect(await response.json()).toEqual({ message: 'request entity too large' });
+  });
+
+  it.each([
+    ['a gzip body', 'gzip', gzipSync(MOVE_BODY)],
+    ['an encoding in capitals', 'GZIP', gzipSync(MOVE_BODY)],
+    ['a deflate body', 'deflate', MOVE_BODY],
+    ['a brotli body', 'br', MOVE_BODY],
+    ['an unknown encoding', 'x-unknown', MOVE_BODY],
+    ['an empty gzip body', 'gzip', ''],
+  ])('refuses %s with 415, without inflating it', async (_case, encoding, body) => {
+    await startServer();
+
+    const response = await postMove({
+      gameId: UNKNOWN_GAME_ID, body, headers: { 'Content-Encoding': encoding },
+    });
+
+    expect(response.status).toBe(UNSUPPORTED_MEDIA_TYPE_STATUS);
+    expect(await response.json()).toEqual({ message: 'content encoding unsupported' });
+  });
+
+  it.each([
+    ['the identity encoding', { 'Content-Encoding': 'identity' }],
+    ['the identity encoding in capitals', { 'Content-Encoding': 'IDENTITY' }],
+    ['no encoding', {}],
+  ])('reads a plain body with %s', async (_case, headers) => {
+    await startServer();
+
+    const response = await postMove({ gameId: UNKNOWN_GAME_ID, body: MOVE_BODY, headers });
+
+    // The body passed the parser: only the unknown game is refused.
+    expect(response.status).toBe(NOT_FOUND_STATUS);
+    expect(await response.json()).toEqual({ message: 'No game has this id.' });
+  });
+
+  it('refuses a charset other than UTF-8 with 415', async () => {
+    await startServer();
+
+    const response = await postMove({
+      gameId: UNKNOWN_GAME_ID,
+      body: MOVE_BODY,
+      headers: { 'Content-Type': 'application/json; charset=latin1' },
+    });
+
+    expect(response.status).toBe(UNSUPPORTED_MEDIA_TYPE_STATUS);
+    expect(await response.json()).toEqual({ message: 'unsupported charset "LATIN1"' });
   });
 
   it('answers 500 without the details of an unexpected error, and logs it', async () => {

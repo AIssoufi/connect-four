@@ -146,6 +146,23 @@ paths:
                   summary: A body above the limit
                   value:
                     message: request entity too large
+        '415':
+          description: >-
+            The body is compressed (a `Content-Encoding` other than `identity`) or its charset is
+            not UTF-8: the API reads only plain UTF-8 bodies.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                compressed:
+                  summary: A gzip body
+                  value:
+                    message: content encoding unsupported
+                otherCharset:
+                  summary: A Latin-1 body
+                  value:
+                    message: unsupported charset "LATIN1"
         '500':
           $ref: '#/components/responses/ServerError'
 components:
