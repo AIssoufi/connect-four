@@ -30,6 +30,32 @@ const GAME_NOT_FOUND = { status: NOT_FOUND_STATUS, body: { message: 'No game has
  * minute. The tests that send no address share the one of the harness: keep their starts below.
  */
 const STARTS_PER_MINUTE = 20;
+/**
+ * The starts that the limit allows to one address in two windows. The local limiter counts in
+ * windows aligned to the minutes of the clock, so starts sent together may straddle two windows,
+ * never more.
+ */
+const STARTS_IN_TWO_WINDOWS = 2 * STARTS_PER_MINUTE;
+/** The starts that one address sends to test the limit: at least one is refused at any second. */
+const STARTS_OVER_TWO_WINDOWS = STARTS_IN_TWO_WINDOWS + 1;
+const TOO_MANY_STARTS = {
+  status: TOO_MANY_REQUESTS_STATUS,
+  body: { message: 'Too many games started from this address: try again later.' },
+};
+
+/**
+ * Tells whether the Worker started the game that a request asked for.
+ * @param {{ status: number }} response - The response to the start.
+ * @returns {boolean} True for a 201 answer.
+ */
+const isStarted = ({ status }) => status === CREATED_STATUS;
+
+/**
+ * Tells whether the start limit refused the game that a request asked for.
+ * @param {{ status: number }} response - The response to the start.
+ * @returns {boolean} True for a 429 answer.
+ */
+const isRefused = ({ status }) => status === TOO_MANY_REQUESTS_STATUS;
 
 // Runs the Worker of `wrangler.jsonc` in the local Workers runtime, with its static assets and
 // its Durable Objects, as `wrangler dev` does.
@@ -203,18 +229,17 @@ describe('the Worker', () => {
   it('refuses with 429 the starts of one IP address over the limit, and only of it', async () => {
     const limitedHeaders = { 'CF-Connecting-IP': '203.0.113.7' };
 
-    const allowedStarts = await Promise.all(
-      Array.from({ length: STARTS_PER_MINUTE }, () => postGame(limitedHeaders)),
+    const starts = await Promise.all(
+      Array.from({ length: STARTS_OVER_TWO_WINDOWS }, () => postGame(limitedHeaders)),
     );
-    const refusedStart = await postGame(limitedHeaders);
     const otherStart = await postGame({ 'CF-Connecting-IP': '203.0.113.8' });
 
-    expect(allowedStarts.map(({ status }) => status))
-      .toEqual(Array(STARTS_PER_MINUTE).fill(CREATED_STATUS));
-    expect(refusedStart).toEqual({
-      status: TOO_MANY_REQUESTS_STATUS,
-      body: { message: 'Too many games started from this address: try again later.' },
-    });
+    const startedCount = starts.filter(isStarted).length;
+    // One of the two windows gets more starts than the limit, so it allows exactly the limit.
+    expect(startedCount).toBeGreaterThanOrEqual(STARTS_PER_MINUTE);
+    expect(startedCount).toBeLessThanOrEqual(STARTS_IN_TWO_WINDOWS);
+    expect(starts.filter(isRefused))
+      .toEqual(Array(STARTS_OVER_TWO_WINDOWS - startedCount).fill(TOO_MANY_STARTS));
     expect(otherStart.status).toBe(CREATED_STATUS);
   });
 
