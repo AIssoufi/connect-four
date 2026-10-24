@@ -67,11 +67,12 @@ body main .yellow-token, #board .column.yellow-token {
 
 /*
  * A dot on the red tokens and a ring on the yellow ones tell them apart without their color, on
- * the board and in the preview of the hovered or focused column that can be played.
+ * the board and in the preview of the focused column that can be played, or of the hovered one
+ * (below).
  */
 .red-token::after,
 .yellow-token::after,
-#control-panel .column-button:not([aria-disabled="true"]):is(:hover, :focus-visible) .token::after {
+#control-panel .column-button:not([aria-disabled="true"]):focus-visible .token::after {
   content: '';
   position: absolute;
   top: 50%;
@@ -83,7 +84,7 @@ body main .yellow-token, #board .column.yellow-token {
 
 .red-token::after,
 #control-panel.current-player-is-red
-  .column-button:not([aria-disabled="true"]):is(:hover, :focus-visible) .token::after {
+  .column-button:not([aria-disabled="true"]):focus-visible .token::after {
   height: 30%;
   width: 30%;
   background-color: var(--token-marker-color);
@@ -91,7 +92,7 @@ body main .yellow-token, #board .column.yellow-token {
 
 .yellow-token::after,
 #control-panel.current-player-is-yellow
-  .column-button:not([aria-disabled="true"]):is(:hover, :focus-visible) .token::after {
+  .column-button:not([aria-disabled="true"]):focus-visible .token::after {
   height: 50%;
   width: 50%;
   border: var(--token-border-width) solid var(--token-marker-color);
@@ -126,13 +127,51 @@ body main .yellow-token, #board .column.yellow-token {
 }
 
 #control-panel.current-player-is-red
-  .column-button:not([aria-disabled="true"]):is(:hover, :focus-visible) .token {
+  .column-button:not([aria-disabled="true"]):focus-visible .token {
   background-color: var(--red-token-color);
 }
 
 #control-panel.current-player-is-yellow
-  .column-button:not([aria-disabled="true"]):is(:hover, :focus-visible) .token {
+  .column-button:not([aria-disabled="true"]):focus-visible .token {
   background-color: var(--yellow-token-color);
+}
+
+/*
+ * The same preview on hover, with a mouse only: on a touch screen, a tap leaves the column hovered,
+ * and its preview would look like a token already played.
+ */
+@media (hover: hover) and (pointer: fine) {
+  #control-panel .column-button:not([aria-disabled="true"]):hover .token::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    box-sizing: border-box;
+    border-radius: 50%;
+  }
+
+  #control-panel.current-player-is-red
+    .column-button:not([aria-disabled="true"]):hover .token::after {
+    height: 30%;
+    width: 30%;
+    background-color: var(--token-marker-color);
+  }
+
+  #control-panel.current-player-is-yellow
+    .column-button:not([aria-disabled="true"]):hover .token::after {
+    height: 50%;
+    width: 50%;
+    border: var(--token-border-width) solid var(--token-marker-color);
+  }
+
+  #control-panel.current-player-is-red .column-button:not([aria-disabled="true"]):hover .token {
+    background-color: var(--red-token-color);
+  }
+
+  #control-panel.current-player-is-yellow .column-button:not([aria-disabled="true"]):hover .token {
+    background-color: var(--yellow-token-color);
+  }
 }
 
 #control-panel [aria-disabled="true"] {
