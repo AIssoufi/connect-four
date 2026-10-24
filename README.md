@@ -94,7 +94,10 @@ pnpm dev
 
 It needs [pnpm](https://pnpm.io/installation): any installed version switches by itself to the
 one that the `packageManager` field of `package.json` pins. pnpm only installs versions published
-at least 7 days earlier, and runs no install script of a dependency (`pnpm-workspace.yaml`).
+at least 7 days earlier, except the exclusions that `pnpm-workspace.yaml` lists, and runs no
+install script of a dependency. The `overrides` of that file force the security fixes that a
+dependency does not take yet: each one, and each exclusion made for such a fix, says when to
+remove it.
 
 `pnpm dev` runs the Worker, its files and its Durable Objects with `wrangler dev`, at
 <http://localhost:8787> by default, and keeps the games in `.wrangler/`.
