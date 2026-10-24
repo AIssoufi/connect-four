@@ -19,9 +19,11 @@ const SECURITY_HEADER_NAMES = [
 ];
 const NOSNIFF = 'nosniff';
 const REFERRER_POLICY = 'strict-origin-when-cross-origin';
-const SITE_ONLY_POLICY = "default-src 'self'";
+/** The directives that `default-src` does not cover, which both policies end with. */
+const NO_FALLBACK_DIRECTIVES = "base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+const SITE_ONLY_POLICY = `default-src 'self'; ${NO_FALLBACK_DIRECTIVES}`;
 const API_DOCS_POLICY = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; "
-  + "style-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:";
+  + `style-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; ${NO_FALLBACK_DIRECTIVES}`;
 const GAME_NOT_FOUND = { status: NOT_FOUND_STATUS, body: { message: 'No game has this id.' } };
 /**
  * The `limit` of `GAME_START_LIMITER` in `wrangler.jsonc`: the starts of one IP address per
