@@ -34,6 +34,12 @@ const SERVER_ERROR_MESSAGE = 'Server error.';
 /** Header in which Cloudflare gives the IP address of the visitor. */
 const CLIENT_IP_HEADER = 'CF-Connecting-IP';
 
+/** Header that tells the browser not to guess the type of an answer from its body. */
+const CONTENT_TYPE_OPTIONS_HEADER = 'X-Content-Type-Options';
+
+/** Value of `CONTENT_TYPE_OPTIONS_HEADER` that keeps the declared `Content-Type`. */
+const NO_SNIFF = 'nosniff';
+
 module.exports = {
   OK_STATUS,
   CREATED_STATUS,
@@ -47,4 +53,6 @@ module.exports = {
   ROUTE_NOT_FOUND_MESSAGE,
   SERVER_ERROR_MESSAGE,
   CLIENT_IP_HEADER,
+  CONTENT_TYPE_OPTIONS_HEADER,
+  NO_SNIFF,
 };
