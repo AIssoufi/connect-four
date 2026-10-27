@@ -1,6 +1,7 @@
 import {
   describe, it, expect, afterEach, vi,
 } from 'vitest';
+import { request as httpRequest } from 'node:http';
 import { gzipSync } from 'node:zlib';
 import createApp from './createApp';
 import listen from './testServer';
@@ -31,6 +32,15 @@ const METHOD_NOT_ALLOWED_MESSAGE = 'This route does not accept this method: see 
 const WRITE_ALLOW = 'POST, OPTIONS';
 /** The `Allow` header of the path that reads a game. */
 const READ_ALLOW = 'GET, HEAD, OPTIONS';
+/** The `Accept` header that Chrome and Firefox send when they open a page. */
+const BROWSER_ACCEPT = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+/** The headers of the 404 page alone, written out so that a change of a constant fails a test. */
+const PAGE_HEADERS = {
+  'Content-Security-Policy': "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+};
+/** The headers of `PAGE_HEADERS`, missing from a JSON answer. */
+const NO_PAGE_HEADERS = { 'Content-Security-Policy': null, 'Referrer-Policy': null };
 /** The headers that every answer of the app carries, with their values. */
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
@@ -44,6 +54,15 @@ const SECURITY_HEADERS = {
  */
 const readSecurityHeaders = (response) => Object.fromEntries(
   Object.keys(SECURITY_HEADERS).map((name) => [name, response.headers.get(name)]),
+);
+
+/**
+ * Reads the headers of `PAGE_HEADERS` from an answer.
+ * @param {Response} response - The answer of the app.
+ * @returns {Record<string, string | null>} Each header name with its value, `null` when missing.
+ */
+const readPageHeaders = (response) => Object.fromEntries(
+  Object.keys(PAGE_HEADERS).map((name) => [name, response.headers.get(name)]),
 );
 
 describe('createApp', () => {
@@ -79,6 +98,90 @@ describe('createApp', () => {
 
     expect(response.status).toBe(NOT_FOUND_STATUS);
     expect(await response.json()).toEqual({ code: 'route_not_found', message: 'This route does not exist.' });
+  });
+
+  it.each([
+    ['any type', '*/*'],
+    ['an empty list of types', ''],
+    ['a malformed list of types', ';;,'],
+    ['JSON', 'application/json'],
+    ['JSON before HTML', 'application/json, text/html;q=0.9'],
+    ['a type that the app does not send', 'image/png'],
+  ])('answers 404 in JSON to a client that accepts %s', async (_case, accept) => {
+    await startServer();
+
+    const response = await fetch(`${server.baseUrl}/about`, { headers: { Accept: accept } });
+
+    expect(response.status).toBe(NOT_FOUND_STATUS);
+    expect(response.headers.get('Content-Type')).toMatch(/^application\/json/);
+    expect(response.headers.get('Vary')).toBe('Accept');
+    expect(await response.json()).toEqual({ code: 'route_not_found', message: 'This route does not exist.' });
+  });
+
+  it.each([
+    ['a browser', BROWSER_ACCEPT],
+    ['HTML alone', 'text/html'],
+  ])('answers 404 with the page to a client that accepts %s', async (_case, accept) => {
+    await startServer();
+
+    const response = await fetch(`${server.baseUrl}/api`, { headers: { Accept: accept } });
+    const page = await response.text();
+
+    expect(response.status).toBe(NOT_FOUND_STATUS);
+    expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+    expect(response.headers.get('Vary')).toBe('Accept');
+    expect(readPageHeaders(response)).toEqual(PAGE_HEADERS);
+    expect(readSecurityHeaders(response)).toEqual(SECURITY_HEADERS);
+    expect(page).toContain('<html lang="fr">');
+    expect(page).toContain('<title>Page introuvable - Puissance 4</title>');
+    expect(page).toContain('<a href="/">Jouer une partie</a>');
+    expect(page).toContain('<a href="/api/v1/">Lire la documentation de l\'API</a>');
+    expect(page).toContain('href="/style.css"');
+    expect(page).toContain('href="/favicon.svg"');
+    expect(page).not.toContain('<script');
+    expect(page).not.toContain('\u2014');
+  });
+
+  it('answers 404 in JSON to a client that sends no Accept', async () => {
+    await startServer();
+
+    // `fetch` adds `Accept: */*` to every request, so the request goes through `node:http`.
+    const { status, headers, body } = await new Promise((resolve, reject) => {
+      const request = httpRequest(`${server.baseUrl}/about`, (response) => {
+        let text = '';
+        response.setEncoding('utf8');
+        response.on('data', (chunk) => { text += chunk; });
+        response.on('end', () => {
+          resolve({ status: response.statusCode, headers: response.headers, body: text });
+        });
+      });
+      request.on('error', reject);
+      request.end();
+    });
+
+    expect(status).toBe(NOT_FOUND_STATUS);
+    expect(headers['content-type']).toBe('application/json; charset=utf-8');
+    expect(headers.vary).toBe('Accept');
+    expect(JSON.parse(body)).toEqual({ code: 'route_not_found', message: 'This route does not exist.' });
+  });
+
+  it.each([
+    ['a browser', BROWSER_ACCEPT, 'text/html; charset=utf-8', PAGE_HEADERS],
+    ['an API client', 'application/json', 'application/json; charset=utf-8', NO_PAGE_HEADERS],
+  ])('answers HEAD on an unknown path from %s with 404 and no body', async (_case, accept, type, pageHeaders) => {
+    await startServer();
+
+    const response = await fetch(`${server.baseUrl}/about`, {
+      method: 'HEAD',
+      headers: { Accept: accept },
+    });
+
+    expect(response.status).toBe(NOT_FOUND_STATUS);
+    expect(response.headers.get('Content-Type')).toBe(type);
+    expect(response.headers.get('Vary')).toBe('Accept');
+    expect(readPageHeaders(response)).toEqual(pageHeaders);
+    expect(readSecurityHeaders(response)).toEqual(SECURITY_HEADERS);
+    expect(await response.text()).toBe('');
   });
 
   it.each([

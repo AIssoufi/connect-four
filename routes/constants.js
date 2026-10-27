@@ -128,6 +128,36 @@ const STRICT_TRANSPORT_SECURITY_HEADER = 'Strict-Transport-Security';
  */
 const HTTPS_ONLY_FOR_A_YEAR = 'max-age=31536000';
 
+/** Header that limits what a page may load, and which sites may frame it. */
+const CONTENT_SECURITY_POLICY_HEADER = 'Content-Security-Policy';
+
+/**
+ * Value of `CONTENT_SECURITY_POLICY_HEADER` for the pages of the app: the same policy as the one
+ * that `public/_headers` gives the files of `public/`, which never reaches the app.
+ */
+const SAME_ORIGIN_ONLY_POLICY = "default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+
+/** Header that limits what a page tells another site about the page that linked to it. */
+const REFERRER_POLICY_HEADER = 'Referrer-Policy';
+
+/** Value of `REFERRER_POLICY_HEADER`: the same as the one of `public/_headers`. */
+const ORIGIN_ONLY_ACROSS_SITES = 'strict-origin-when-cross-origin';
+
+/** Request header from which the app chooses between the JSON and the HTML 404. */
+const ACCEPT_HEADER = 'Accept';
+
+/** The format of the answers of the API. */
+const JSON_FORMAT = 'json';
+
+/** The format that a browser prefers. */
+const HTML_FORMAT = 'html';
+
+/**
+ * Formats that the 404 comes in, JSON first: a request that accepts any type, or that sends no
+ * `Accept`, gets JSON.
+ */
+const NOT_FOUND_FORMATS = [JSON_FORMAT, HTML_FORMAT];
+
 module.exports = {
   OK_STATUS,
   CREATED_STATUS,
@@ -167,4 +197,12 @@ module.exports = {
   NO_SNIFF,
   STRICT_TRANSPORT_SECURITY_HEADER,
   HTTPS_ONLY_FOR_A_YEAR,
+  CONTENT_SECURITY_POLICY_HEADER,
+  SAME_ORIGIN_ONLY_POLICY,
+  REFERRER_POLICY_HEADER,
+  ORIGIN_ONLY_ACROSS_SITES,
+  ACCEPT_HEADER,
+  JSON_FORMAT,
+  HTML_FORMAT,
+  NOT_FOUND_FORMATS,
 };

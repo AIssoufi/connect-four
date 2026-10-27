@@ -45,6 +45,10 @@ const SWAGGER_UI_VERSION = JSON.parse(
 const SVG_ICON_LINK_PATTERN = /<link rel="icon" type="image\/svg\+xml" href="([^"]+)">/;
 /** The icon of the game page, which the API docs page shows too. */
 const GAME_ICON_ROUTE = '/favicon.svg';
+/** The `Accept` header that Chrome and Firefox send when they open a page. */
+const BROWSER_ACCEPT = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+/** The stylesheets of the 404 page, which the assets of `public/` must serve. */
+const NOT_FOUND_PAGE_STYLESHEETS = ['/style.css', '/not-found.css'];
 /** The API docs page, without and with its trailing slash: links resolve against either one. */
 const DOCS_PAGE_URLS = ['http://localhost/api/v1', 'http://localhost/api/v1/'];
 const GAME_NOT_FOUND = { status: NOT_FOUND_STATUS, body: { code: 'game_not_found', message: 'No game has this id.' } };
@@ -335,5 +339,19 @@ describe('the Worker', () => {
       status: NOT_FOUND_STATUS,
       body: { code: 'route_not_found', message: 'This route does not exist.' },
     });
+  });
+
+  it('answers 404 with the page, whose stylesheets it serves, to a browser', async () => {
+    const response = await harness.fetch('/about', { headers: { Accept: BROWSER_ACCEPT } });
+    const page = await response.text();
+    const stylesheets = await Promise.all(
+      NOT_FOUND_PAGE_STYLESHEETS.map((route) => harness.fetch(route)),
+    );
+
+    expect(response.status).toBe(NOT_FOUND_STATUS);
+    expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+    expect(page).toContain('<a href="/">Jouer une partie</a>');
+    NOT_FOUND_PAGE_STYLESHEETS.forEach((route) => expect(page).toContain(`href="${route}"`));
+    stylesheets.forEach(({ status }) => expect(status).toBe(OK_STATUS));
   });
 });

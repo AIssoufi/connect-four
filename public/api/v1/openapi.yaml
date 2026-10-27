@@ -14,7 +14,9 @@ info:
     `/game/{gameId}/status`. Any other method gets `405` with the same `Allow` header and the
     body `{"code": "method_not_allowed", "message": "This route does not accept this method: see
     the Allow header."}`. A path that the API does not serve gets `404` with `{"code":
-    "route_not_found", "message": "This route does not exist."}`.
+    "route_not_found", "message": "This route does not exist."}`, unless its `Accept` prefers
+    `text/html`, as a browser does: it then gets an HTML page that links to the game and to
+    these docs.
 
 
     Every `4xx` body is a `ClientError`: a `code` from a fixed list, to test in a client, and a
