@@ -9,13 +9,15 @@ const {
   SERVER_ERROR_MESSAGE,
   CONTENT_TYPE_OPTIONS_HEADER,
   NO_SNIFF,
+  STRICT_TRANSPORT_SECURITY_HEADER,
+  HTTPS_ONLY_FOR_A_YEAR,
 } = require('./constants');
 
 /**
  * Builds the Express app of the API: the `/game` routes, a JSON 404 for any other path, and an
  * error handler that answers JSON without the stack trace. Every answer sends
- * `X-Content-Type-Options: nosniff`. The Worker serves the files of `public/` before any request
- * reaches this app.
+ * `X-Content-Type-Options: nosniff` and `Strict-Transport-Security: max-age=31536000`. The Worker
+ * serves the files of `public/` before any request reaches this app.
  * @param {object} params
  * @param {import('../worker/createGameStore').GameStore} params.games - The games to serve.
  * @param {object} [params.startLimiter] - The Rate Limiting binding that limits the games each
@@ -29,6 +31,7 @@ const createApp = ({ games, startLimiter }) => {
   // Set before any route, so that the 404 and the error answers carry it too.
   app.use((req, res, next) => {
     res.set(CONTENT_TYPE_OPTIONS_HEADER, NO_SNIFF);
+    res.set(STRICT_TRANSPORT_SECURITY_HEADER, HTTPS_ONLY_FOR_A_YEAR);
     next();
   });
 

@@ -19,6 +19,20 @@ const MOVE_BODY = JSON.stringify({ playerId: 'red', column: 1 });
 const TOO_LARGE_BODY = JSON.stringify({ playerId: 'red', column: 1, padding: 'x'.repeat(200000) });
 /** An id that no game has: the body is refused before the id is looked up. */
 const UNKNOWN_GAME_ID = '0'.repeat(GAME_ID_LENGTH);
+/** The headers that every answer of the app carries, with their values. */
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'Strict-Transport-Security': 'max-age=31536000',
+};
+
+/**
+ * Reads the headers of `SECURITY_HEADERS` from an answer.
+ * @param {Response} response - The answer of the app.
+ * @returns {Record<string, string | null>} Each header name with its value, `null` when missing.
+ */
+const readSecurityHeaders = (response) => Object.fromEntries(
+  Object.keys(SECURITY_HEADERS).map((name) => [name, response.headers.get(name)]),
+);
 
 describe('createApp', () => {
   let server;
@@ -63,13 +77,13 @@ describe('createApp', () => {
     expect(response.headers.get('X-Powered-By')).toBeNull();
   });
 
-  it('sends nosniff with a game start', async () => {
+  it('sends nosniff and HSTS with a game start', async () => {
     await startServer();
 
     const response = await fetch(`${server.baseUrl}/game`, { method: 'POST' });
 
     expect(response.status).toBe(CREATED_STATUS);
-    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(readSecurityHeaders(response)).toEqual(SECURITY_HEADERS);
   });
 
   it.each([
@@ -79,16 +93,16 @@ describe('createApp', () => {
       () => postMove({ gameId: UNKNOWN_GAME_ID, body: 'null' }),
       BAD_REQUEST_STATUS,
     ],
-  ])('sends nosniff with %s', async (_case, send, status) => {
+  ])('sends nosniff and HSTS with %s', async (_case, send, status) => {
     await startServer();
 
     const response = await send();
 
     expect(response.status).toBe(status);
-    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(readSecurityHeaders(response)).toEqual(SECURITY_HEADERS);
   });
 
-  it('sends nosniff with the 500 of an unexpected error', async () => {
+  it('sends nosniff and HSTS with the 500 of an unexpected error', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await startServer({
       create: async () => { throw new TypeError('Unexpected'); },
@@ -97,7 +111,7 @@ describe('createApp', () => {
     const response = await fetch(`${server.baseUrl}/game`, { method: 'POST' });
 
     expect(response.status).toBe(SERVER_ERROR_STATUS);
-    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+    expect(readSecurityHeaders(response)).toEqual(SECURITY_HEADERS);
   });
 
   it.each([
