@@ -16,7 +16,7 @@ const NEW_GAME_STATUS = new Engine().getStatus();
 const GAME_NOT_FOUND = { message: 'No game has this id.' };
 const CLIENT_IP = '203.0.113.7';
 const OTHER_CLIENT_IP = '203.0.113.8';
-/** The starts that the counting stand-in of the limiter allows to each address. */
+/** The starts that the counting stand-in of the limiter allows to each key. */
 const FAKE_START_LIMIT = 3;
 const TOO_MANY_STARTS_MESSAGE = 'Too many games started from this address: try again later.';
 
@@ -138,6 +138,24 @@ describe('game routes', () => {
       expect(otherStart.status).toBe(CREATED_STATUS);
       // The starts allowed to the first address, plus the one of the other address.
       expect(create).toHaveBeenCalledTimes(FAKE_START_LIMIT + 1);
+    });
+
+    it('counts the starts of two IPv6 addresses of one /64 network together', async () => {
+      startLimiter.limit.mockImplementation(countCallsByKey(FAKE_START_LIMIT));
+      const networkStarts = Array.from(
+        { length: FAKE_START_LIMIT },
+        (_start, index) => postGame({ 'CF-Connecting-IP': `2001:db8:0:1::${index + 1}` }),
+      );
+
+      const allowedStarts = await Promise.all(networkStarts);
+      const refusedStart = await postGame({ 'CF-Connecting-IP': '2001:db8:0:1:ffff::1' });
+      const otherNetworkStart = await postGame({ 'CF-Connecting-IP': '2001:db8:0:2::1' });
+
+      expect(allowedStarts.map(({ status }) => status))
+        .toEqual(Array(FAKE_START_LIMIT).fill(CREATED_STATUS));
+      expect(refusedStart.status).toBe(TOO_MANY_REQUESTS_STATUS);
+      expect(otherNetworkStart.status).toBe(CREATED_STATUS);
+      expect(startLimiter.limit).toHaveBeenCalledWith({ key: '2001:db8:0:1::/64' });
     });
 
     it('limits neither the reads nor the moves', async () => {

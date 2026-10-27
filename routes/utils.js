@@ -1,6 +1,7 @@
 const { PLAYER_IDS, FIRST_COLUMN_NUMBER, COLUMN_COUNT } = require('../app/constants');
 const { isKnownPlayer, isValidColumnNumber } = require('../app/utils');
 const { BAD_REQUEST_STATUS, LAST_CLIENT_ERROR_STATUS } = require('./constants');
+const { getClientNetworkKey } = require('./clientNetwork');
 
 /**
  * Reads and validates the JSON body of `POST /game/{gameId}/play`.
@@ -45,25 +46,25 @@ const isExposedClientError = (error) => {
 
 /**
  * Tells whether a visitor may start one more game, under the Rate Limiting binding of the
- * Worker, which counts the starts of each IP address.
+ * Worker, which counts the starts of each client network. See `getClientNetworkKey()`.
  * @param {object} params
  * @param {{ limit: (options: { key: string }) => Promise<{ success: boolean }> } | undefined}
  *   params.limiter - The Rate Limiting binding, `undefined` when the app runs without it.
  * @param {string | undefined} params.clientIp - The IP address of the visitor, `undefined` when
  *   the request has none.
- * @returns {Promise<boolean>} Whether the limit allows the start. Without a binding or an
- * address to count by, as in some local runs, every start is allowed.
+ * @returns {Promise<boolean>} Whether the limit allows the start. Without a binding, or without
+ * an address (missing or empty), as in some local runs, every start is allowed.
  * @example
  * await isStartAllowed({ limiter: env.GAME_START_LIMITER, clientIp: '203.0.113.7' }); // true
  */
 const isStartAllowed = async ({ limiter, clientIp }) => {
-  const hasClientIp = typeof clientIp === 'string' && clientIp !== '';
-  const canLimit = Boolean(limiter) && hasClientIp;
+  const key = getClientNetworkKey(clientIp);
+  const canLimit = Boolean(limiter) && key !== undefined;
   if (!canLimit) {
     return true;
   }
 
-  const { success } = await limiter.limit({ key: clientIp });
+  const { success } = await limiter.limit({ key });
 
   return success;
 };

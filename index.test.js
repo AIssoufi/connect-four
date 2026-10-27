@@ -49,7 +49,7 @@ const GAME_ICON_ROUTE = '/favicon.svg';
 const DOCS_PAGE_URLS = ['http://localhost/api/v1', 'http://localhost/api/v1/'];
 const GAME_NOT_FOUND = { status: NOT_FOUND_STATUS, body: { message: 'No game has this id.' } };
 /**
- * The `limit` of `GAME_START_LIMITER` in `wrangler.jsonc`: the starts of one IP address per
+ * The `limit` of `GAME_START_LIMITER` in `wrangler.jsonc`: the starts of one client network per
  * minute. The tests that send no address share the one of the harness: keep their starts below.
  */
 const STARTS_PER_MINUTE = 20;
@@ -288,7 +288,7 @@ describe('the Worker', () => {
       .toEqual(GAME_NOT_FOUND);
   });
 
-  it('refuses with 429 the starts of one IP address over the limit, and only of it', async () => {
+  it('refuses with 429 the starts of one client network over the limit, and only of it', async () => {
     const limitedHeaders = { 'CF-Connecting-IP': '203.0.113.7' };
 
     const starts = await Promise.all(
