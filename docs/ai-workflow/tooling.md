@@ -11,7 +11,7 @@ project tools come from `pnpm-lock.yaml` and `package.json`.
 | [Worktrunk][worktrunk] | A worktree per ticket from `origin/master`, set up by `.config/wt.toml` |
 | [GitHub][github] | The `C4-` autolink, Project 12 and the `Protect master` ruleset |
 | commitlint 21.2.3, Husky 9.1.7 | Conventional Commits and the `Refs: C4-<n>` trailer |
-| GitHub Actions | `ci.yml` (lint, tests), `commit-messages.yml` (commitlint) and `live-check.yml` (daily check of the live site) |
+| GitHub Actions | `ci.yml` (lint, tests), `commit-messages.yml` (commitlint) and `live-check.yml` (hourly and daily checks of the live site) |
 | Dependabot | Weekly pull requests for npm and GitHub Actions, of releases at least 7 days old |
 | pnpm 12.14.0, Node.js 24 | Install from the frozen lockfile, Node.js from `.nvmrc` |
 | Vitest 5.0.4, ESLint 10.12.0 | Tests, and lint of the code |

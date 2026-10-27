@@ -2,14 +2,22 @@ name: Live check
 
 on:
   schedule:
-    # Every day at 06:17 UTC, off the hour when GitHub delays the scheduled runs most.
+    # Every day at 06:17 UTC, off the hour when GitHub delays the scheduled runs most: the full
+    # check, with a game.
     - cron: '17 6 * * *'
+    # Every hour at minute 47: the files and the API docs only, with no game. FILES_ONLY below
+    # compares the schedule with this string: change both together.
+    - cron: '47 * * * *'
   workflow_dispatch:
     inputs:
       host:
         description: The host to check, such as a wrong one to see the check fail.
         required: true
         default: connect-four.issoufi.fr
+      files-only:
+        description: Check the files and the API docs only, without starting a game.
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -25,9 +33,13 @@ jobs:
         with:
           persist-credentials: false
 
-      # Starts one game, which counts against the start rate limit: keep this workflow daily.
+      # The full check starts one game, which counts against the start rate limit: keep it daily.
       - name: Request the site and the API
         env:
           # A scheduled run has no inputs: the script then checks its default host.
           HOST: ${{ inputs.host }}
-        run: scripts/live-check.sh "$HOST"
+          FILES_ONLY: ${{ github.event.schedule == '47 * * * *' || inputs.files-only }}
+        run: |
+          options=()
+          if [[ $FILES_ONLY == true ]]; then options+=(--files-only); fi
+          scripts/live-check.sh "${options[@]}" "$HOST"
