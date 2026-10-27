@@ -35,7 +35,8 @@ The page can also be played on a phone, with the keyboard alone and with a scree
   [Cloudflare Worker](https://developers.cloudflare.com/workers/) with the `nodejs_compat` flag.
 - Each game lives in its own [Durable Object](https://developers.cloudflare.com/durable-objects/),
   which deletes it 7 days after its start or its last move.
-- A rate limit lets each IP address start 20 games a minute.
+- A rate limit lets each client network (an IPv4 address or an IPv6 /64 prefix) start 20
+  games a minute.
 - The page is plain HTML, CSS and JavaScript, with no build step.
 - [Vitest](https://vitest.dev/) runs the tests, ESLint 10 and Redocly CLI lint the code and the
   OpenAPI document, and GitHub Actions runs them on every pull request.
@@ -56,7 +57,7 @@ SRI hashes of its files.
 ## Game API
 
 - `POST /game` starts a game. It returns `201` with the game, whose `id` the other routes take,
-  and a `Location` header to read it. Each IP address may start 20 games a minute: beyond, it
+  and a `Location` header to read it. Each client network may start 20 games a minute: beyond, it
   returns `429 { "message": "..." }`.
 - `GET /game/{gameId}/status` returns the game: its `id`, the `players`, the `tokens` left,
   `lastPlayerWhoPlayed`, `winner` (`no winner` until a player aligns four tokens), `state`
@@ -95,7 +96,7 @@ The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), d
   wakes up. The engine does not depend on Express or on Cloudflare. An alarm of the Durable
   Object deletes the game 7 days after its start or its last move.
 - The [Rate Limiting binding](https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/)
-  `GAME_START_LIMITER` counts the games that each IP address starts.
+  `GAME_START_LIMITER` counts the games that each client network starts.
 
 [docs/decisions/0002](docs/decisions/0002-host-on-a-cloudflare-worker-with-durable-objects.md)
 explains these choices.

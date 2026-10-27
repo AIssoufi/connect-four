@@ -13,7 +13,8 @@
     "bindings": [{ "name": "GAMES", "class_name": "Game" }]
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Game"] }],
-  // Limits the games that one IP address starts with `POST /game`, per minute.
+  // Limits the games that one client network (an IPv4 address or an IPv6 /64 prefix) starts
+  // with `POST /game`, per minute.
   "ratelimits": [
     {
       "name": "GAME_START_LIMITER",
