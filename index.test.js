@@ -13,6 +13,17 @@ import { GAME_ID_LENGTH, GAME_ID_PATTERN } from './worker/constants';
 const WORKER_START_TIMEOUT_MS = 60000;
 const NEW_GAME_STATUS = new Engine().getStatus();
 const TEMPORARY_REDIRECT_STATUS = 307;
+/** The headers that `public/_headers` sets, in the order of the values below. */
+const SECURITY_HEADER_NAMES = [
+  'X-Content-Type-Options', 'Referrer-Policy', 'Content-Security-Policy',
+];
+const NOSNIFF = 'nosniff';
+const REFERRER_POLICY = 'strict-origin-when-cross-origin';
+/** The directives that `default-src` does not cover, which both policies end with. */
+const NO_FALLBACK_DIRECTIVES = "base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+const SITE_ONLY_POLICY = `default-src 'self'; ${NO_FALLBACK_DIRECTIVES}`;
+const API_DOCS_POLICY = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; "
+  + `style-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; ${NO_FALLBACK_DIRECTIVES}`;
 const GAME_NOT_FOUND = { status: NOT_FOUND_STATUS, body: { message: 'No game has this id.' } };
 /**
  * The `limit` of `GAME_START_LIMITER` in `wrangler.jsonc`: the starts of one IP address per
@@ -109,6 +120,22 @@ describe('the Worker', () => {
     expect(redirect.headers.get('Location')).toBe('/api/v1/');
     expect(await docs.text()).toContain('swagger-initializer.js');
     expect(await spec.text()).toMatch(/^openapi: 3\.1\.0$/m);
+  });
+
+  it('sends the security headers of `public/_headers` with the files, not with the API', async () => {
+    const [page, script, docs, game] = await Promise.all(
+      ['/', '/main.js', '/api/v1/', '/game/unknown/status'].map((route) => harness.fetch(route)),
+    );
+    const readSecurityHeaders = (response) => SECURITY_HEADER_NAMES.map(
+      (name) => response.headers.get(name),
+    );
+
+    expect(readSecurityHeaders(page)).toEqual([NOSNIFF, REFERRER_POLICY, SITE_ONLY_POLICY]);
+    expect(readSecurityHeaders(script)).toEqual([NOSNIFF, REFERRER_POLICY, SITE_ONLY_POLICY]);
+    // Its own rule replaces the policy of the whole site, instead of joining it with a comma.
+    expect(readSecurityHeaders(docs)).toEqual([NOSNIFF, REFERRER_POLICY, API_DOCS_POLICY]);
+    expect(readSecurityHeaders(game)).toEqual([null, null, null]);
+    await Promise.all([page, script, docs, game].map((response) => response.body.cancel()));
   });
 
   it('starts a game in a Durable Object', async () => {

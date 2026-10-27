@@ -1,0 +1,12 @@
+# The security headers of the files that Workers Static Assets serves. They never reach the
+# responses of the Worker, the API routes. Each policy also sets the directives that default-src
+# does not cover: no other site may frame the pages, change their base URL or receive their forms.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+# The API docs load Swagger UI from jsDelivr, and its stylesheet draws its icons as data: images.
+/api/v1/*
+  ! Content-Security-Policy
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
