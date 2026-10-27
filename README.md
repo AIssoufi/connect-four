@@ -48,6 +48,10 @@ The page can also be played on a phone, with the keyboard alone and with a scree
 `/api/v1/` shows the docs of the API with Swagger UI, from the OpenAPI 3.1 document
 `public/api/v1/openapi.yaml`. Keep that document in step with the routes of `routes/index.js`.
 
+The page loads Swagger UI from jsDelivr, at the version of the `swagger-ui-dist` devDependency of
+`package.json`, which Dependabot bumps. `index.test.js` fails until the two URLs of
+`public/api/v1/index.html` take the new version and the SRI hashes of its files.
+
 ## Game API
 
 - `POST /game` starts a game. It returns `201` with the game, whose `id` the other routes take,
