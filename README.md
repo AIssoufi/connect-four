@@ -70,7 +70,8 @@ SRI hashes of its files.
 
 An id that no game has returns `404 { "code": "game_not_found", "message": "..." }`, and a route
 that does not exist `404 { "code": "route_not_found", "message": "..." }`. A game is deleted 7
-days after its start or its last move, so its id then returns `404` too.
+days after its start or its last move, so its id then returns `404` too. So does an id whose
+percent-encoding cannot be decoded, such as `/game/%E0/status`.
 
 A route called with a method it does not serve, such as `GET /game/{gameId}/play` or
 `DELETE /game`, returns `405 { "code": "method_not_allowed", "message": "..." }` with an `Allow`

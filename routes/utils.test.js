@@ -2,7 +2,7 @@ import {
   describe, it, expect, vi,
 } from 'vitest';
 import {
-  parseMove, isExposedClientError, getClientErrorCode, isStartAllowed,
+  parseMove, isExposedClientError, isParamDecodingError, getClientErrorCode, isStartAllowed,
 } from './utils';
 
 const BODY_ERROR = {
@@ -87,6 +87,45 @@ describe('isExposedClientError', () => {
     ['a NaN status', { expose: true, status: Number.NaN }],
   ])('refuses %s', (_case, error) => {
     expect(isExposedClientError(error)).toBe(false);
+  });
+});
+
+describe('isParamDecodingError', () => {
+  /**
+   * Gives the error that `decodeURIComponent()` throws for a value, with a status.
+   * @param {object} params
+   * @param {string} params.value - A value whose percent-encoding cannot be decoded.
+   * @param {unknown} params.status - The status to set on the error.
+   * @returns {URIError} The error, as the router passes it on when `status` is 400.
+   */
+  const getDecodingError = ({ value, status }) => {
+    try {
+      decodeURIComponent(value);
+    } catch (error) {
+      return Object.assign(error, { status });
+    }
+
+    throw new Error(`${value} decodes`);
+  };
+
+  it.each([
+    ['a truncated UTF-8 sequence', '%E0'],
+    ['a lone percent sign', '%'],
+    ['a percent sign before a non-hex digit', '%G0'],
+  ])('accepts the router error for %s', (_case, value) => {
+    expect(isParamDecodingError(getDecodingError({ value, status: 400 }))).toBe(true);
+  });
+
+  it.each([
+    ['no error', undefined],
+    ['null', null],
+    ['a URIError without status', new URIError('URI malformed')],
+    ['a URIError with another status', getDecodingError({ value: '%E0', status: 500 })],
+    ['a URIError with the status as a string', getDecodingError({ value: '%E0', status: '400' })],
+    ['another error with status 400', Object.assign(new Error('Bad'), { status: 400 })],
+    ['a plain object shaped like it', { name: 'URIError', status: 400 }],
+  ])('refuses %s', (_case, error) => {
+    expect(isParamDecodingError(error)).toBe(false);
   });
 });
 

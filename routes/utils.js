@@ -69,6 +69,20 @@ const isExposedClientError = (error) => {
 };
 
 /**
+ * Tells whether an error is the one the Express router raises for a path parameter whose
+ * percent-encoding cannot be decoded, such as the game id of `/game/%E0/status`.
+ * @param {unknown} error - The error that the router passed on.
+ * @returns {boolean} `true` for a `URIError` with the status 400 that the router sets on it.
+ * @example
+ * isParamDecodingError(Object.assign(new URIError('URI malformed'), { status: 400 })); // true
+ */
+const isParamDecodingError = (error) => {
+  const isUriError = error instanceof URIError;
+
+  return isUriError && error.status === BAD_REQUEST_STATUS;
+};
+
+/**
  * Gives the error code of a client error that a route passed on, such as a body that
  * `express.json()` refuses. See `isExposedClientError()`.
  * @param {unknown} error - The client error.
@@ -111,6 +125,7 @@ const isStartAllowed = async ({ limiter, clientIp }) => {
 module.exports = {
   parseMove,
   isExposedClientError,
+  isParamDecodingError,
   getClientErrorCode,
   isStartAllowed,
 };

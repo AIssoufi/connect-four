@@ -399,7 +399,8 @@ components:
     GameNotFound:
       description: >-
         No game has this id: it was never started, or it was deleted 7 days after its start or
-        its last move.
+        its last move. An id whose percent-encoding cannot be decoded, such as `%E0`, gets this
+        answer too.
       content:
         application/json:
           schema:
