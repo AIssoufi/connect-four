@@ -92,11 +92,25 @@ describe('isStartAllowed', () => {
    */
   const createLimiter = (success) => ({ limit: vi.fn(async () => ({ success })) });
 
-  it('allows a start that the limit allows, counted by the IP address', async () => {
+  it('allows a start that the limit allows, counted by the client network', async () => {
     const limiter = createLimiter(true);
 
     expect(await isStartAllowed({ limiter, clientIp: CLIENT_IP })).toBe(true);
     expect(limiter.limit).toHaveBeenCalledWith({ key: CLIENT_IP });
+  });
+
+  it('counts the start of an IPv6 address by its /64 network', async () => {
+    const limiter = createLimiter(true);
+
+    expect(await isStartAllowed({ limiter, clientIp: '2001:db8:0:1::7' })).toBe(true);
+    expect(limiter.limit).toHaveBeenCalledWith({ key: '2001:db8:0:1::/64' });
+  });
+
+  it('counts the start of a value that is not an address by that value', async () => {
+    const limiter = createLimiter(true);
+
+    expect(await isStartAllowed({ limiter, clientIp: ' unknown ' })).toBe(true);
+    expect(limiter.limit).toHaveBeenCalledWith({ key: 'unknown' });
   });
 
   it('refuses a start that the limit refuses', async () => {
