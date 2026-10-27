@@ -41,6 +41,12 @@ const SWAGGER_UI_LINK_PATTERN = /swagger-ui-dist@([^/]+)\/([\w.-]+)"\s+integrity
 const SWAGGER_UI_VERSION = JSON.parse(
   readFileSync(new URL('package.json', import.meta.url), 'utf8'),
 ).devDependencies[SWAGGER_UI_PACKAGE];
+/** The `href` of the SVG icon that a page links to. */
+const SVG_ICON_LINK_PATTERN = /<link rel="icon" type="image\/svg\+xml" href="([^"]+)">/;
+/** The icon of the game page, which the API docs page shows too. */
+const GAME_ICON_ROUTE = '/favicon.svg';
+/** The API docs page, without and with its trailing slash: links resolve against either one. */
+const DOCS_PAGE_URLS = ['http://localhost/api/v1', 'http://localhost/api/v1/'];
 const GAME_NOT_FOUND = { status: NOT_FOUND_STATUS, body: { message: 'No game has this id.' } };
 /**
  * The `limit` of `GAME_START_LIMITER` in `wrangler.jsonc`: the starts of one IP address per
@@ -175,6 +181,18 @@ describe('the Worker', () => {
     expect(redirect.headers.get('Location')).toBe('/api/v1/');
     expect(await docs.text()).toContain('swagger-initializer.js');
     expect(await spec.text()).toMatch(/^openapi: 3\.1\.0$/m);
+  });
+
+  it('shows the icon of the game on the API docs page, with or without the trailing slash', async () => {
+    const docs = await (await harness.fetch('/api/v1/')).text();
+    const [, iconHref] = docs.match(SVG_ICON_LINK_PATTERN) ?? [];
+    const iconRoutes = DOCS_PAGE_URLS.map((pageUrl) => new URL(iconHref, pageUrl).pathname);
+    const icon = await harness.fetch(GAME_ICON_ROUTE);
+
+    expect(iconRoutes).toEqual(DOCS_PAGE_URLS.map(() => GAME_ICON_ROUTE));
+    // "serves the favicon that the page links to" checks its status and type: here, its content.
+    expect(await icon.text())
+      .toEqual(readFileSync(new URL(`public${GAME_ICON_ROUTE}`, import.meta.url), 'utf8'));
   });
 
   it('loads in the API docs the Swagger UI of `package.json`, with the hashes of its files', async () => {
