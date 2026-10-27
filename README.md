@@ -73,7 +73,9 @@ The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), d
   before the Worker runs. `public/.assetsignore` keeps the tests of the page helpers out of it.
 - `public/_headers` adds security headers to these files. Its Content-Security-Policy only allows
   the site itself and forbids other sites to frame the pages, and `/api/v1/` has its own to load
-  Swagger UI from jsDelivr. The JSON answers of the Worker do not get these headers.
+  Swagger UI from jsDelivr. Its Strict-Transport-Security keeps browsers on HTTPS for a year, for
+  this host alone. The JSON answers of the Worker do not get these headers: the Express app sends
+  them only `X-Content-Type-Options` and `Strict-Transport-Security`.
 - The page loads `public/main.js` as an ES module, which draws the game. It calls the API through
   `public/api.js`, imports its rules from `public/utils.js`, and writes its texts with
   `public/texts.js` from the copy of `public/constants.js`.

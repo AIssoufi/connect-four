@@ -15,9 +15,12 @@ const NEW_GAME_STATUS = new Engine().getStatus();
 const TEMPORARY_REDIRECT_STATUS = 307;
 /** The headers that `public/_headers` sets, in the order of the values below. */
 const SECURITY_HEADER_NAMES = [
-  'X-Content-Type-Options', 'Referrer-Policy', 'Content-Security-Policy',
+  'X-Content-Type-Options', 'Strict-Transport-Security',
+  'Referrer-Policy', 'Content-Security-Policy',
 ];
 const NOSNIFF = 'nosniff';
+/** HTTPS only for a year, for this host alone: neither `includeSubDomains` nor `preload`. */
+const HSTS = 'max-age=31536000';
 const REFERRER_POLICY = 'strict-origin-when-cross-origin';
 /** The directives that `default-src` does not cover, which both policies end with. */
 const NO_FALLBACK_DIRECTIVES = "base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
@@ -148,7 +151,7 @@ describe('the Worker', () => {
     expect(await spec.text()).toMatch(/^openapi: 3\.1\.0$/m);
   });
 
-  it('sends the security headers of `public/_headers` with the files, only nosniff with the API', async () => {
+  it('sends the security headers of `public/_headers` with the files, only nosniff and HSTS with the API', async () => {
     const [page, script, docs, game] = await Promise.all(
       ['/', '/main.js', '/api/v1/', '/game/unknown/status'].map((route) => harness.fetch(route)),
     );
@@ -156,12 +159,12 @@ describe('the Worker', () => {
       (name) => response.headers.get(name),
     );
 
-    expect(readSecurityHeaders(page)).toEqual([NOSNIFF, REFERRER_POLICY, SITE_ONLY_POLICY]);
-    expect(readSecurityHeaders(script)).toEqual([NOSNIFF, REFERRER_POLICY, SITE_ONLY_POLICY]);
+    expect(readSecurityHeaders(page)).toEqual([NOSNIFF, HSTS, REFERRER_POLICY, SITE_ONLY_POLICY]);
+    expect(readSecurityHeaders(script)).toEqual([NOSNIFF, HSTS, REFERRER_POLICY, SITE_ONLY_POLICY]);
     // Its own rule replaces the policy of the whole site, instead of joining it with a comma.
-    expect(readSecurityHeaders(docs)).toEqual([NOSNIFF, REFERRER_POLICY, API_DOCS_POLICY]);
-    // The Express app sends nosniff itself, but none of the policies of the files.
-    expect(readSecurityHeaders(game)).toEqual([NOSNIFF, null, null]);
+    expect(readSecurityHeaders(docs)).toEqual([NOSNIFF, HSTS, REFERRER_POLICY, API_DOCS_POLICY]);
+    // The Express app sends nosniff and HSTS itself, but none of the policies of the files.
+    expect(readSecurityHeaders(game)).toEqual([NOSNIFF, HSTS, null, null]);
     await Promise.all([page, script, docs, game].map((response) => response.body.cancel()));
   });
 

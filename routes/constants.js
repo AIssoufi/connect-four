@@ -40,6 +40,15 @@ const CONTENT_TYPE_OPTIONS_HEADER = 'X-Content-Type-Options';
 /** Value of `CONTENT_TYPE_OPTIONS_HEADER` that keeps the declared `Content-Type`. */
 const NO_SNIFF = 'nosniff';
 
+/** Header that tells the browser to reach the site over HTTPS only, even when typed without it. */
+const STRICT_TRANSPORT_SECURITY_HEADER = 'Strict-Transport-Security';
+
+/**
+ * Value of `STRICT_TRANSPORT_SECURITY_HEADER`: HTTPS only for a year (in seconds), for this host
+ * alone, with neither `includeSubDomains` nor `preload`. `public/_headers` sends the same value.
+ */
+const HTTPS_ONLY_FOR_A_YEAR = 'max-age=31536000';
+
 module.exports = {
   OK_STATUS,
   CREATED_STATUS,
@@ -55,4 +64,6 @@ module.exports = {
   CLIENT_IP_HEADER,
   CONTENT_TYPE_OPTIONS_HEADER,
   NO_SNIFF,
+  STRICT_TRANSPORT_SECURITY_HEADER,
+  HTTPS_ONLY_FOR_A_YEAR,
 };

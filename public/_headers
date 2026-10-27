@@ -1,8 +1,11 @@
 # The security headers of the files that Workers Static Assets serves. They never reach the
 # responses of the Worker, the API routes. Each policy also sets the directives that default-src
 # does not cover: no other site may frame the pages, change their base URL or receive their forms.
+# HSTS covers this host alone for a year: no includeSubDomains, no preload. The rules of a path
+# join those of /*, so /api/v1/* keeps it.
 /*
   X-Content-Type-Options: nosniff
+  Strict-Transport-Security: max-age=31536000
   Referrer-Policy: strict-origin-when-cross-origin
   Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 
