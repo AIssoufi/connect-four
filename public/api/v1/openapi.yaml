@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Connect Four API
-  version: 2.0.0
+  version: 2.1.0
   description: >-
     Plays games of Connect Four between a red and a yellow player, red first. Each game has its
     own id: start one with `POST /game`, then read it and play its moves with that id. A game
@@ -111,6 +111,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Game'
+              examples:
+                redWins:
+                  $ref: '#/components/examples/WonGame'
         '400':
           description: >-
             The move is refused: the body is not valid JSON or not a valid move, or the move
@@ -199,6 +202,23 @@ components:
         maxItems: 7
         items:
           $ref: '#/components/schemas/Cell'
+    Position:
+      description: >-
+        A cell of the board, by its indexes in `board`: `row` from 0 for the top row, `column`
+        from 0 for the left column.
+      type: object
+      required:
+        - row
+        - column
+      properties:
+        row:
+          type: integer
+          minimum: 0
+          maximum: 5
+        column:
+          type: integer
+          minimum: 0
+          maximum: 6
     Game:
       description: A game and its result.
       type: object
@@ -210,6 +230,7 @@ components:
         - winner
         - state
         - board
+        - winningCells
       properties:
         id:
           description: The id of the game, for its other routes.
@@ -254,6 +275,15 @@ components:
             - draw
         board:
           $ref: '#/components/schemas/Board'
+        winningCells:
+          description: >-
+            The cells of the tokens that won, in reading order (top row first, then left to
+            right): the four cells of the line, more when the winning move made a longer line or
+            two lines at once. The list is empty, never absent, while the game goes on and after a
+            draw.
+          type: array
+          items:
+            $ref: '#/components/schemas/Position'
     Move:
       description: A token that a player drops in a column.
       type: object
@@ -322,3 +352,33 @@ components:
           - [0, 0, 0, 0, 0, 0, 0]
           - [0, 0, 0, 0, 0, 0, 0]
           - [0, 0, 0, 0, 0, 0, 0]
+        winningCells: []
+    WonGame:
+      summary: A game that red won with four tokens in the left column
+      value:
+        id: 0000017f1f5c4bd2a16a4b3a7c5e9d8f0000017f1f5c4bd2a16a4b3a7c5e9d8f
+        players:
+          - red
+          - yellow
+        tokens:
+          red: 17
+          yellow: 18
+        lastPlayerWhoPlayed: red
+        winner: red
+        state: won
+        board:
+          - [0, 0, 0, 0, 0, 0, 0]
+          - [0, 0, 0, 0, 0, 0, 0]
+          - [red, 0, 0, 0, 0, 0, 0]
+          - [red, yellow, 0, 0, 0, 0, 0]
+          - [red, yellow, 0, 0, 0, 0, 0]
+          - [red, yellow, 0, 0, 0, 0, 0]
+        winningCells:
+          - row: 2
+            column: 0
+          - row: 3
+            column: 0
+          - row: 4
+            column: 0
+          - row: 5
+            column: 0
