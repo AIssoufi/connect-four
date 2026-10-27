@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import {
   describe, it, expect, beforeAll, afterAll,
 } from 'vitest';
@@ -27,6 +29,18 @@ const NO_FALLBACK_DIRECTIVES = "base-uri 'self'; form-action 'self'; frame-ances
 const SITE_ONLY_POLICY = `default-src 'self'; ${NO_FALLBACK_DIRECTIVES}`;
 const API_DOCS_POLICY = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; "
   + `style-src 'self' https://cdn.jsdelivr.net; img-src 'self' data:; ${NO_FALLBACK_DIRECTIVES}`;
+/** The npm package of Swagger UI that the API docs page loads from jsDelivr. */
+const SWAGGER_UI_PACKAGE = 'swagger-ui-dist';
+/** The hash algorithm of the `integrity` attributes of the API docs page. */
+const SRI_HASH_ALGORITHM = 'sha384';
+/** The files of `SWAGGER_UI_PACKAGE` that the API docs page loads. */
+const SWAGGER_UI_FILES = ['swagger-ui.css', 'swagger-ui-bundle.js'];
+/** A jsDelivr URL of `swagger-ui-dist` and its hash: the version, the file and the `integrity`. */
+const SWAGGER_UI_LINK_PATTERN = /swagger-ui-dist@([^/]+)\/([\w.-]+)"\s+integrity="([^"]+)"/g;
+/** The exact version of `swagger-ui-dist` that `package.json` pins, which Dependabot bumps. */
+const SWAGGER_UI_VERSION = JSON.parse(
+  readFileSync(new URL('package.json', import.meta.url), 'utf8'),
+).devDependencies[SWAGGER_UI_PACKAGE];
 const GAME_NOT_FOUND = { status: NOT_FOUND_STATUS, body: { message: 'No game has this id.' } };
 /**
  * The `limit` of `GAME_START_LIMITER` in `wrangler.jsonc`: the starts of one IP address per
@@ -59,6 +73,18 @@ const isStarted = ({ status }) => status === CREATED_STATUS;
  * @returns {boolean} True for a 429 answer.
  */
 const isRefused = ({ status }) => status === TOO_MANY_REQUESTS_STATUS;
+
+/**
+ * Computes the Subresource Integrity hash of a file of the installed `swagger-ui-dist`.
+ * @param {string} file - The name of the file in the package.
+ * @returns {string} Its `integrity` value: the algorithm, a dash and the base64 digest.
+ */
+const hashSwaggerUiFile = (file) => {
+  const fileUrl = new URL(`node_modules/${SWAGGER_UI_PACKAGE}/${file}`, import.meta.url);
+  const digest = createHash(SRI_HASH_ALGORITHM).update(readFileSync(fileUrl)).digest('base64');
+
+  return `${SRI_HASH_ALGORITHM}-${digest}`;
+};
 
 // Runs the Worker of `wrangler.jsonc` in the local Workers runtime, with its static assets and
 // its Durable Objects, as `wrangler dev` does.
@@ -149,6 +175,20 @@ describe('the Worker', () => {
     expect(redirect.headers.get('Location')).toBe('/api/v1/');
     expect(await docs.text()).toContain('swagger-initializer.js');
     expect(await spec.text()).toMatch(/^openapi: 3\.1\.0$/m);
+  });
+
+  it('loads in the API docs the Swagger UI of `package.json`, with the hashes of its files', async () => {
+    const docs = await (await harness.fetch('/api/v1/')).text();
+
+    const links = [...docs.matchAll(SWAGGER_UI_LINK_PATTERN)].map(
+      ([, version, file, integrity]) => ({ version, file, integrity }),
+    );
+
+    expect(links).toEqual(SWAGGER_UI_FILES.map((file) => ({
+      version: SWAGGER_UI_VERSION,
+      file,
+      integrity: hashSwaggerUiFile(file),
+    })));
   });
 
   it('sends the security headers of `public/_headers` with the files, only nosniff and HSTS with the API', async () => {

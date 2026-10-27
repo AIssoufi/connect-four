@@ -48,6 +48,11 @@ The page can also be played on a phone, with the keyboard alone and with a scree
 `/api/v1/` shows the docs of the API with Swagger UI, from the OpenAPI 3.1 document
 `public/api/v1/openapi.yaml`. Keep that document in step with the routes of `routes/index.js`.
 
+The page loads Swagger UI from jsDelivr, at the version of the `swagger-ui-dist` devDependency of
+`package.json`, which Dependabot bumps in a pull request of its own. That pull request fails
+`index.test.js` until the two links of `public/api/v1/index.html` take the new version and the
+SRI hashes of its files.
+
 ## Game API
 
 - `POST /game` starts a game. It returns `201` with the game, whose `id` the other routes take,
@@ -225,8 +230,9 @@ at 06:17 UTC:
   run it in a loop.
 
 Dependabot checks the npm packages and GitHub Actions every week, for releases at least a week old
-(`.github/dependabot.yml`): one pull request for the npm minor and patch updates, and one for the
-GitHub Actions updates. It proposes no npm major update: each one goes through its own ticket.
+(`.github/dependabot.yml`): one pull request for the npm minor and patch updates, one for the
+GitHub Actions updates, and one alone for `swagger-ui-dist` (see [API docs](#api-docs)). It
+proposes no npm major update: each one goes through its own ticket.
 
 ## Commit messages
 
