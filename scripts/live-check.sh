@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Checks that the live site and its API answer: the page and every file it loads, the API docs
-# and their OpenAPI file, then a new game, its status and a first move. Exits non-zero at the
-# first failed check.
+# Checks that the live site and its API answer: the page and the API docs, every file of this
+# site that they load and the OpenAPI file, then a new game, its status and a first move. Exits
+# non-zero at the first failed check.
 #
 # Usage: scripts/live-check.sh [--files-only] [host], connect-four.issoufi.fr by default. The host
 # may also be a URL with its scheme, such as http://localhost:8787 for a local server.
@@ -66,25 +66,40 @@ resolve() {
   printf '%s\n' "${directory:+$directory/}$reference"
 }
 
+# The files left to request, from the src and href attributes of the pages, then from the
+# modules that each script imports, read from the served files so that the list follows the
+# deployment.
+pending=()
+
+# Adds to pending the files of this site that a page loads, and fails when it loads none.
+# Usage: queue_page_files <path of the page, without a leading slash> <body of the page>
+queue_page_files() {
+  local page_path=$1 page_body=$2 reference file found=false
+  while IFS= read -r reference; do
+    file=$(resolve "$page_path" "$reference")
+    if [[ -n $file ]]; then
+      pending+=("$file")
+      found=true
+    fi
+  done < <(grep --only-matching --extended-regexp '(src|href)="[^"]*"' <<< "$page_body" \
+    | sed -E 's/^(src|href)="(.*)"$/\2/')
+  if [[ $found != true ]]; then
+    echo "The page /$page_path loads no file of this site." >&2
+    return 1
+  fi
+}
+
 echo "GET $base_url/ answers 200 and holds $PAGE_TITLE"
 page=$(request 200 "$base_url/")
 if [[ $page != *"$PAGE_TITLE"* ]]; then
   echo "The page does not hold $PAGE_TITLE." >&2
   exit 1
 fi
+queue_page_files '' "$page"
 
-# The files that the page loads: its src and href attributes, then the modules that each script
-# imports, read from the served files so that the list follows the deployment.
-pending=()
-while IFS= read -r reference; do
-  file=$(resolve '' "$reference")
-  [[ -n $file ]] && pending+=("$file")
-done < <(grep --only-matching --extended-regexp '(src|href)="[^"]*"' <<< "$page" \
-  | sed -E 's/^(src|href)="(.*)"$/\2/')
-if (( ${#pending[@]} == 0 )); then
-  echo "The page loads no file of this site." >&2
-  exit 1
-fi
+echo "GET $base_url/api/v1/ answers 200"
+docs_page=$(request 200 "$base_url/api/v1/")
+queue_page_files 'api/v1/' "$docs_page"
 
 checked=' '
 while (( ${#pending[@]} > 0 )); do
@@ -101,9 +116,6 @@ while (( ${#pending[@]} > 0 )); do
   done < <(grep --only-matching --extended-regexp "(from|import)[[:space:]]*['\"][^'\"]+['\"]" \
     <<< "$body" | sed -E "s/^(from|import)[[:space:]]*['\"](.*)['\"]$/\2/")
 done
-
-echo "GET $base_url/api/v1/ answers 200"
-request 200 "$base_url/api/v1/" > /dev/null
 
 echo "GET $base_url/api/v1/openapi.yaml answers 200"
 request 200 "$base_url/api/v1/openapi.yaml" > /dev/null

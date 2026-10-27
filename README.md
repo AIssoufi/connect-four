@@ -227,9 +227,10 @@ its title unless a bot opened it, with commitlint (see [Commit messages](#commit
 
 `.github/workflows/live-check.yml` runs `scripts/live-check.sh` against the live site:
 
-- it requests the page and every file it loads (the `src` and `href` attributes of the served
-  page, then the modules that each script imports, read from the served files), the API docs and
-  `/api/v1/openapi.yaml`, and fails when one of them does not answer 200;
+- it requests the page, the API docs and every file of this site that they load (the `src` and
+  `href` attributes of the served pages, then the modules that each script imports, read from the
+  served files; Swagger UI on jsDelivr is left out), then `/api/v1/openapi.yaml`, and fails when
+  one of them does not answer 200;
 - every day at 06:17 UTC, the full check then starts a game, reads its status and plays a first
   move;
 - every hour at minute 47, the files-only check (`--files-only`) starts no game: it checks
