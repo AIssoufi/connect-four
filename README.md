@@ -163,9 +163,9 @@ deployed to least recently.
   Wrangler, with its files and its Durable Objects;
 - the commit message checks, which call Git.
 
-They need Node.js 22.13+, 24 or 26+ (the `engines` field of `package.json`). `.nvmrc` gives the
-version used in development and in the CI: 24, an LTS release. jsdom, which only
-`public/main.test.js` loads, declares Node.js 22.22.2+, 24.15+ or 26+.
+They need Node.js 22.22.2+, 24.15+ or 26+ (the `engines` field of `package.json`): the versions
+that jsdom supports. `.nvmrc` gives the version used in development and in the CI: 24, an LTS
+release.
 
 ## Lint
 
