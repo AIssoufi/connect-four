@@ -1,27 +1,51 @@
-const { PLAYER_IDS, FIRST_COLUMN_NUMBER, COLUMN_COUNT } = require('../app/constants');
+const {
+  PLAYER_IDS,
+  FIRST_COLUMN_NUMBER,
+  COLUMN_COUNT,
+  ERROR_CODES,
+} = require('../app/constants');
 const { isKnownPlayer, isValidColumnNumber } = require('../app/utils');
-const { BAD_REQUEST_STATUS, LAST_CLIENT_ERROR_STATUS } = require('./constants');
+const {
+  BAD_REQUEST_STATUS,
+  LAST_CLIENT_ERROR_STATUS,
+  BODY_PARSER_ERROR_CODES,
+} = require('./constants');
 const { getClientNetworkKey } = require('./clientNetwork');
 
 /**
  * Reads and validates the JSON body of `POST /game/{gameId}/play`.
  * @param {unknown} body - The parsed body, `undefined` when the request sent no JSON.
- * @returns {{ playerId: string, column: number } | { error: string }} The move, or a message
- * explaining what is wrong.
+ * @returns {{ playerId: string, column: number } | { error: { code: string, message: string } }}
+ * The move, or the code and the message that explain what is wrong, ready to send as the body.
  */
 const parseMove = (body) => {
   const isJsonObject = typeof body === 'object' && body !== null && !Array.isArray(body);
   if (!isJsonObject) {
-    return { error: 'The body must be a JSON object with a playerId and a column.' };
+    return {
+      error: {
+        code: ERROR_CODES.INVALID_MOVE,
+        message: 'The body must be a JSON object with a playerId and a column.',
+      },
+    };
   }
 
   const { playerId, column } = body;
   if (!isKnownPlayer(playerId)) {
-    return { error: `The playerId must be one of: ${Object.values(PLAYER_IDS).join(', ')}.` };
+    return {
+      error: {
+        code: ERROR_CODES.INVALID_PLAYER,
+        message: `The playerId must be one of: ${Object.values(PLAYER_IDS).join(', ')}.`,
+      },
+    };
   }
 
   if (!isValidColumnNumber(column)) {
-    return { error: `The column must be an integer between ${FIRST_COLUMN_NUMBER} and ${COLUMN_COUNT}.` };
+    return {
+      error: {
+        code: ERROR_CODES.INVALID_COLUMN,
+        message: `The column must be an integer between ${FIRST_COLUMN_NUMBER} and ${COLUMN_COUNT}.`,
+      },
+    };
   }
 
   return { playerId, column };
@@ -42,6 +66,21 @@ const isExposedClientError = (error) => {
   const isExposed = Boolean(error && error.expose);
 
   return isExposed && isClientErrorStatus;
+};
+
+/**
+ * Gives the error code of a client error that a route passed on, such as a body that
+ * `express.json()` refuses. See `isExposedClientError()`.
+ * @param {unknown} error - The client error.
+ * @returns {string} The code of its `type` in `BODY_PARSER_ERROR_CODES`, or
+ * `ERROR_CODES.INVALID_REQUEST` for any other error.
+ * @example
+ * getClientErrorCode({ type: 'entity.too.large', status: 413, expose: true }); // 'body_too_large'
+ */
+const getClientErrorCode = (error) => {
+  const type = error && error.type;
+
+  return BODY_PARSER_ERROR_CODES.get(type) ?? ERROR_CODES.INVALID_REQUEST;
 };
 
 /**
@@ -69,4 +108,9 @@ const isStartAllowed = async ({ limiter, clientIp }) => {
   return success;
 };
 
-module.exports = { parseMove, isExposedClientError, isStartAllowed };
+module.exports = {
+  parseMove,
+  isExposedClientError,
+  getClientErrorCode,
+  isStartAllowed,
+};

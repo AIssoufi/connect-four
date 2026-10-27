@@ -13,7 +13,7 @@ import {
 import { GAME_ID_LENGTH, GAME_ID_PATTERN } from '../worker/constants';
 
 const NEW_GAME_STATUS = new Engine().getStatus();
-const GAME_NOT_FOUND = { message: 'No game has this id.' };
+const GAME_NOT_FOUND = { code: 'game_not_found', message: 'No game has this id.' };
 const CLIENT_IP = '203.0.113.7';
 const OTHER_CLIENT_IP = '203.0.113.8';
 /** The starts that the counting stand-in of the limiter allows to each key. */
@@ -113,7 +113,7 @@ describe('game routes', () => {
 
       expect(response).toMatchObject({
         status: TOO_MANY_REQUESTS_STATUS,
-        body: { message: TOO_MANY_STARTS_MESSAGE },
+        body: { code: 'too_many_starts', message: TOO_MANY_STARTS_MESSAGE },
       });
       expect(create).not.toHaveBeenCalled();
     });
@@ -133,7 +133,7 @@ describe('game routes', () => {
         .toEqual(Array(FAKE_START_LIMIT).fill(CREATED_STATUS));
       expect(refusedStart).toMatchObject({
         status: TOO_MANY_REQUESTS_STATUS,
-        body: { message: TOO_MANY_STARTS_MESSAGE },
+        body: { code: 'too_many_starts', message: TOO_MANY_STARTS_MESSAGE },
       });
       expect(otherStart.status).toBe(CREATED_STATUS);
       // The starts allowed to the first address, plus the one of the other address.
@@ -218,14 +218,22 @@ describe('game routes', () => {
     expect((await getStatus(second.id)).body).toEqual({ id: second.id, ...NEW_GAME_STATUS });
   });
 
-  it('refuses a move that breaks a rule with its message', async () => {
+  it.each([
+    ['a move out of turn', 'R1', { playerId: 'red', column: 2 }, 'not_your_turn', "red: it's not your turn!"],
+    ['a move in a full column', 'R1 Y1 R1 Y1 R1 Y1', { playerId: 'red', column: 1 }, 'column_full', 'The column 1 is full!'],
+    ['a move after a win', RED_WINS_MOVES, { playerId: 'yellow', column: 3 }, 'game_over', 'The game is over!'],
+  ])('refuses %s with the code and the message of its rule', async (_case, moves, move, code, message) => {
     const { id } = await startGame();
-    await play({ gameId: id, move: { playerId: 'red', column: 1 } });
+    // The moves must run one after the other, in order.
+    await readMoves(moves).reduce(
+      (previous, playedMove) => previous.then(() => play({ gameId: id, move: playedMove })),
+      Promise.resolve(),
+    );
 
-    const { status, body } = await play({ gameId: id, move: { playerId: 'red', column: 2 } });
+    const { status, body } = await play({ gameId: id, move });
 
     expect(status).toBe(BAD_REQUEST_STATUS);
-    expect(body).toEqual({ message: "red: it's not your turn!" });
+    expect(body).toEqual({ code, message });
   });
 
   it('refuses a first move of yellow and keeps the board empty', async () => {
@@ -234,26 +242,28 @@ describe('game routes', () => {
     const { status, body } = await play({ gameId: id, move: { playerId: 'yellow', column: 1 } });
 
     expect(status).toBe(BAD_REQUEST_STATUS);
-    expect(body).toEqual({ message: "yellow: it's not your turn!" });
+    expect(body).toEqual({ code: 'not_your_turn', message: "yellow: it's not your turn!" });
     expect((await getStatus(id)).body).toEqual({ id, ...NEW_GAME_STATUS });
   });
 
   it.each([
-    ['no body', { body: '' }],
-    ['a body that is not JSON', { body: 'playerId=red&column=1', contentType: 'application/x-www-form-urlencoded' }],
-    ['a JSON array', { body: '[]' }],
-    ['an unknown player', { body: '{"playerId":"green","column":1}' }],
-    ['the old playerid field', { body: '{"playerid":"red","column":1}' }],
-    ['a column written as a string', { body: '{"playerId":"red","column":"1"}' }],
-    ['a decimal column', { body: '{"playerId":"red","column":2.5}' }],
-    ['a column out of the board', { body: '{"playerId":"red","column":8}' }],
-  ])('refuses %s without playing', async (_case, request) => {
+    ['an empty JSON body, which the parser reads as an empty object', { body: '' }, 'invalid_player'],
+    ['a body that is not JSON', { body: 'playerId=red&column=1', contentType: 'application/x-www-form-urlencoded' }, 'invalid_move'],
+    ['a JSON array', { body: '[]' }, 'invalid_move'],
+    ['an empty object', { body: '{}' }, 'invalid_player'],
+    ['an unknown player', { body: '{"playerId":"green","column":1}' }, 'invalid_player'],
+    ['the old playerid field', { body: '{"playerid":"red","column":1}' }, 'invalid_player'],
+    ['a missing column', { body: '{"playerId":"red"}' }, 'invalid_column'],
+    ['a column written as a string', { body: '{"playerId":"red","column":"1"}' }, 'invalid_column'],
+    ['a decimal column', { body: '{"playerId":"red","column":2.5}' }, 'invalid_column'],
+    ['a column out of the board', { body: '{"playerId":"red","column":8}' }, 'invalid_column'],
+  ])('refuses %s without playing', async (_case, request, code) => {
     const { id } = await startGame();
 
     const { status, body } = await postMove({ gameId: id, ...request });
 
     expect(status).toBe(BAD_REQUEST_STATUS);
-    expect(body.message).toMatch(/must be/);
+    expect(body).toEqual({ code, message: expect.stringMatching(/must be/) });
     expect((await getStatus(id)).body).toEqual({ id, ...NEW_GAME_STATUS });
   });
 

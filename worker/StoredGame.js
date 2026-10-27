@@ -79,9 +79,9 @@ class StoredGame {
   /**
    * Plays a move, then saves it.
    * @param {{ playerId: string, column: number }} move - The move, as `Engine.play()` takes it.
-   * @returns {Promise<{ status: object } | { refusal: string } | null>} The new status, the
-   * message of the rule the move breaks (the game and its deletion do not change then), or
-   * `null` when the game was never started.
+   * @returns {Promise<{ status: object } | { refusal: { code: string, message: string } } | null>}
+   * The new status, the code and the message of the rule the move breaks (the game and its
+   * deletion do not change then), or `null` when the game was never started.
    * @throws {Error} Any error of the engine that is not a `GameError`.
    */
   async play(move) {
@@ -97,7 +97,7 @@ class StoredGame {
         throw error;
       }
 
-      return { refusal: error.message };
+      return { refusal: { code: error.code, message: error.message } };
     }
 
     this.moves = [...this.moves, { playerId: move.playerId, column: move.column }];

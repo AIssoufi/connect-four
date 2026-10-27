@@ -1,3 +1,5 @@
+const { ERROR_CODES } = require('../app/constants');
+
 /** HTTP status of an accepted request. */
 const OK_STATUS = 200;
 
@@ -39,6 +41,17 @@ const METHOD_NOT_ALLOWED_MESSAGE = 'This route does not accept this method: see 
 
 /** Message of a request that failed because of the server: the details stay in the logs. */
 const SERVER_ERROR_MESSAGE = 'Server error.';
+
+/**
+ * Codes of the refusals of a body by `express.json()`, by the `type` that the parser gives its
+ * error. Any other exposed client error gets `ERROR_CODES.INVALID_REQUEST`.
+ */
+const BODY_PARSER_ERROR_CODES = new Map([
+  ['entity.parse.failed', ERROR_CODES.INVALID_JSON],
+  ['entity.too.large', ERROR_CODES.BODY_TOO_LARGE],
+  ['encoding.unsupported', ERROR_CODES.UNSUPPORTED_ENCODING],
+  ['charset.unsupported', ERROR_CODES.UNSUPPORTED_CHARSET],
+]);
 
 /** Header in which Cloudflare gives the IP address of the visitor. */
 const CLIENT_IP_HEADER = 'CF-Connecting-IP';
@@ -130,6 +143,7 @@ module.exports = {
   ROUTE_NOT_FOUND_MESSAGE,
   METHOD_NOT_ALLOWED_MESSAGE,
   SERVER_ERROR_MESSAGE,
+  BODY_PARSER_ERROR_CODES,
   CLIENT_IP_HEADER,
   ALLOW_HEADER,
   IPV4_PATTERN,

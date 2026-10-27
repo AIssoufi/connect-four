@@ -40,7 +40,7 @@ describe('createGameStore', () => {
     await games.play({ gameId, move: RED_IN_COLUMN_4 });
 
     expect(await games.play({ gameId, move: RED_IN_COLUMN_4 }))
-      .toEqual({ refusal: "red: it's not your turn!" });
+      .toEqual({ refusal: { code: 'not_your_turn', message: "red: it's not your turn!" } });
   });
 
   it('keeps two games apart', async () => {

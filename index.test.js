@@ -47,7 +47,7 @@ const SVG_ICON_LINK_PATTERN = /<link rel="icon" type="image\/svg\+xml" href="([^
 const GAME_ICON_ROUTE = '/favicon.svg';
 /** The API docs page, without and with its trailing slash: links resolve against either one. */
 const DOCS_PAGE_URLS = ['http://localhost/api/v1', 'http://localhost/api/v1/'];
-const GAME_NOT_FOUND = { status: NOT_FOUND_STATUS, body: { message: 'No game has this id.' } };
+const GAME_NOT_FOUND = { status: NOT_FOUND_STATUS, body: { code: 'game_not_found', message: 'No game has this id.' } };
 /**
  * The `limit` of `GAME_START_LIMITER` in `wrangler.jsonc`: the starts of one client network per
  * minute. The tests that send no address share the one of the harness: keep their starts below.
@@ -63,7 +63,10 @@ const STARTS_IN_TWO_WINDOWS = 2 * STARTS_PER_MINUTE;
 const STARTS_OVER_TWO_WINDOWS = STARTS_IN_TWO_WINDOWS + 1;
 const TOO_MANY_STARTS = {
   status: TOO_MANY_REQUESTS_STATUS,
-  body: { message: 'Too many games started from this address: try again later.' },
+  body: {
+    code: 'too_many_starts',
+    message: 'Too many games started from this address: try again later.',
+  },
 };
 
 /**
@@ -241,7 +244,7 @@ describe('the Worker', () => {
 
     expect(lastMove).toMatchObject({ status: OK_STATUS, body: { winner: 'red', state: 'won' } });
     expect(await play({ gameId: id, move: { playerId: 'yellow', column: 3 } }))
-      .toEqual({ status: BAD_REQUEST_STATUS, body: { message: 'The game is over!' } });
+      .toEqual({ status: BAD_REQUEST_STATUS, body: { code: 'game_over', message: 'The game is over!' } });
   });
 
   it('plays a game until a draw', async () => {
@@ -312,7 +315,7 @@ describe('the Worker', () => {
 
     expect(response).toEqual({
       status: BAD_REQUEST_STATUS,
-      body: { message: 'The column must be an integer between 1 and 7.' },
+      body: { code: 'invalid_column', message: 'The column must be an integer between 1 and 7.' },
     });
     expect((await getStatus(id)).body).toEqual({ id, ...NEW_GAME_STATUS });
   });
@@ -328,7 +331,7 @@ describe('the Worker', () => {
   it('answers 404 in JSON for a route that does not exist', async () => {
     expect(await call({ route: '/game/status' })).toEqual({
       status: NOT_FOUND_STATUS,
-      body: { message: 'This route does not exist.' },
+      body: { code: 'route_not_found', message: 'This route does not exist.' },
     });
   });
 });

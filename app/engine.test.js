@@ -151,16 +151,17 @@ describe('Engine', () => {
      * Expects a move to be refused with a `GameError` and the game to stay unchanged.
      * @param {object} params
      * @param {object} [params.move] - The argument given to `play`.
+     * @param {string} params.code - The expected error code.
      * @param {RegExp|string} params.message - The expected error message.
      */
-    const expectRefusedMove = ({ move, message }) => {
+    const expectRefusedMove = ({ move, code, message }) => {
       const statusBefore = engine.getStatus();
       const expectedMessage = typeof message === 'string' ? message : expect.stringMatching(message);
 
       // `toThrow(GameError)` cannot work here: the test imports through Vite while the
       // engine loads `GameError` with `require`, so each side gets its own class.
       expect(() => engine.play(move)).toThrow(
-        expect.objectContaining({ name: 'GameError', message: expectedMessage }),
+        expect.objectContaining({ name: 'GameError', code, message: expectedMessage }),
       );
       expect(engine.getStatus()).toEqual(statusBefore);
     };
@@ -172,7 +173,7 @@ describe('Engine', () => {
       ['a player with spaces', ' red'],
       ['an object', { id: 'red' }],
     ])('refuses %s', (_case, playerId) => {
-      expectRefusedMove({ move: { playerId, column: 1 }, message: 'The player must be one of: red, yellow!' });
+      expectRefusedMove({ move: { playerId, column: 1 }, code: 'invalid_player', message: 'The player must be one of: red, yellow!' });
     });
 
     it.each([
@@ -188,22 +189,23 @@ describe('Engine', () => {
     ])('refuses the column %s', (_case, column) => {
       expectRefusedMove({
         move: { playerId: 'red', column },
+        code: 'invalid_column',
         message: 'The column number must be an integer between 1 and 7!',
       });
     });
 
     it('refuses a call without a move', () => {
-      expectRefusedMove({ move: undefined, message: 'The player must be one of: red, yellow!' });
+      expectRefusedMove({ move: undefined, code: 'invalid_player', message: 'The player must be one of: red, yellow!' });
     });
 
     it('refuses two moves in a row of the same player', () => {
       playMoves({ engine, moves: 'R1' });
 
-      expectRefusedMove({ move: { playerId: 'red', column: 2 }, message: /not your turn/ });
+      expectRefusedMove({ move: { playerId: 'red', column: 2 }, code: 'not_your_turn', message: /not your turn/ });
     });
 
     it('refuses a first move of yellow, since red plays first', () => {
-      expectRefusedMove({ move: { playerId: 'yellow', column: 1 }, message: "yellow: it's not your turn!" });
+      expectRefusedMove({ move: { playerId: 'yellow', column: 1 }, code: 'not_your_turn', message: "yellow: it's not your turn!" });
 
       playMoves({ engine, moves: 'R1' });
       expect(engine.getStatus().lastPlayerWhoPlayed).toBe('red');
@@ -212,7 +214,7 @@ describe('Engine', () => {
     it('lets yellow play first in a game that starts with yellow', () => {
       engine = new Engine({ firstPlayer: 'yellow' });
 
-      expectRefusedMove({ move: { playerId: 'red', column: 1 }, message: "red: it's not your turn!" });
+      expectRefusedMove({ move: { playerId: 'red', column: 1 }, code: 'not_your_turn', message: "red: it's not your turn!" });
       playMoves({ engine, moves: 'Y1 R2' });
       expect(engine.getStatus().lastPlayerWhoPlayed).toBe('red');
     });
@@ -226,7 +228,7 @@ describe('Engine', () => {
     ])('lets red play first when the first player is %s', (_case, firstPlayer) => {
       engine = new Engine({ firstPlayer });
 
-      expectRefusedMove({ move: { playerId: 'yellow', column: 1 }, message: "yellow: it's not your turn!" });
+      expectRefusedMove({ move: { playerId: 'yellow', column: 1 }, code: 'not_your_turn', message: "yellow: it's not your turn!" });
       playMoves({ engine, moves: 'R1' });
       expect(engine.getStatus().lastPlayerWhoPlayed).toBe('red');
     });
@@ -234,7 +236,7 @@ describe('Engine', () => {
     it('refuses a full column and keeps the turn', () => {
       playMoves({ engine, moves: 'R1 Y1 R1 Y1 R1 Y1' });
 
-      expectRefusedMove({ move: { playerId: 'red', column: 1 }, message: 'The column 1 is full!' });
+      expectRefusedMove({ move: { playerId: 'red', column: 1 }, code: 'column_full', message: 'The column 1 is full!' });
 
       playMoves({ engine, moves: 'R2' });
       expect(engine.getStatus().lastPlayerWhoPlayed).toBe('red');
@@ -243,21 +245,21 @@ describe('Engine', () => {
     it('refuses any move once a player has won, and keeps the winner', () => {
       playMoves({ engine, moves: 'R1 Y2 R1 Y2 R1 Y2 R1' });
 
-      expectRefusedMove({ move: { playerId: 'yellow', column: 2 }, message: 'The game is over!' });
-      expectRefusedMove({ move: { playerId: 'red', column: 5 }, message: 'The game is over!' });
+      expectRefusedMove({ move: { playerId: 'yellow', column: 2 }, code: 'game_over', message: 'The game is over!' });
+      expectRefusedMove({ move: { playerId: 'red', column: 5 }, code: 'game_over', message: 'The game is over!' });
       expect(engine.getStatus().winner).toBe('red');
     });
 
     it('refuses any move after a draw', () => {
       playMoves({ engine, moves: DRAW_MOVES });
 
-      expectRefusedMove({ move: { playerId: 'red', column: 1 }, message: 'The game is over!' });
+      expectRefusedMove({ move: { playerId: 'red', column: 1 }, code: 'game_over', message: 'The game is over!' });
     });
 
     it('refuses a move of a player without tokens', () => {
       engine.tokens.red = 0;
 
-      expectRefusedMove({ move: { playerId: 'red', column: 1 }, message: /enough token/ });
+      expectRefusedMove({ move: { playerId: 'red', column: 1 }, code: 'no_token_left', message: /enough token/ });
     });
   });
 
