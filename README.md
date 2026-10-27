@@ -225,20 +225,26 @@ its `v6` tag still points to v6.0.10.
 `.github/workflows/commit-messages.yml` checks the commit messages of every pull request, and
 its title unless a bot opened it, with commitlint (see [Commit messages](#commit-messages)).
 
-`.github/workflows/live-check.yml` runs `scripts/live-check.sh` against the live site every day
-at 06:17 UTC:
+`.github/workflows/live-check.yml` runs `scripts/live-check.sh` against the live site:
 
-- it requests the page, its script and the API docs, then starts a game, reads its status and
-  plays a first move, and prints each request;
+- it requests the page and every file it loads (the `src` and `href` attributes of the served
+  page, then the modules that each script imports, read from the served files), the API docs and
+  `/api/v1/openapi.yaml`, and fails when one of them does not answer 200;
+- every day at 06:17 UTC, the full check then starts a game, reads its status and plays a first
+  move;
+- every hour at minute 47, the files-only check (`--files-only`) starts no game: it checks
+  instead that an unknown game answers its JSON 404 with the code `game_not_found`;
+- it prints each request;
 - to run it by hand, click "Run workflow" on the workflow in the Actions tab, with a `host` input
-  (`connect-four.issoufi.fr` by default), or run `scripts/live-check.sh [host]` with `curl` and
-  `jq`;
+  (`connect-four.issoufi.fr` by default) and a `files-only` box, or run
+  `scripts/live-check.sh [--files-only] [host]` with `curl` and `jq`; the host may be a URL with
+  its scheme, such as `http://localhost:8787` for `pnpm dev`;
 - a failed run shows in the Actions tab, and GitHub e-mails it to the user who last changed the
   `cron` of the workflow;
 - GitHub turns the schedule off after 60 days without activity in the repository: turn it back
   on with "Enable workflow" in the Actions tab;
-- each run starts one game, which counts against the start rate limit: keep it daily and never
-  run it in a loop.
+- each full run starts one game, which counts against the start rate limit: keep it daily and
+  never run it in a loop.
 
 Dependabot checks the npm packages and GitHub Actions every week, for releases at least a week old
 (`.github/dependabot.yml`): one pull request for the npm minor and patch updates, one for the
