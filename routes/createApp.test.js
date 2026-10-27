@@ -6,7 +6,9 @@ import createApp from './createApp';
 import listen from './testServer';
 import createGameStore from '../worker/createGameStore';
 import { createFakeGameNamespace } from '../worker/testDoubles';
-import { BAD_REQUEST_STATUS, NOT_FOUND_STATUS, SERVER_ERROR_STATUS } from './constants';
+import {
+  BAD_REQUEST_STATUS, CREATED_STATUS, NOT_FOUND_STATUS, SERVER_ERROR_STATUS,
+} from './constants';
 import { GAME_ID_LENGTH } from '../worker/constants';
 
 const PAYLOAD_TOO_LARGE_STATUS = 413;
@@ -59,6 +61,43 @@ describe('createApp', () => {
     const response = await fetch(`${server.baseUrl}/`);
 
     expect(response.headers.get('X-Powered-By')).toBeNull();
+  });
+
+  it('sends nosniff with a game start', async () => {
+    await startServer();
+
+    const response = await fetch(`${server.baseUrl}/game`, { method: 'POST' });
+
+    expect(response.status).toBe(CREATED_STATUS);
+    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+  });
+
+  it.each([
+    ['the JSON 404', () => fetch(`${server.baseUrl}/`), NOT_FOUND_STATUS],
+    [
+      'the refusal of a body by the parser',
+      () => postMove({ gameId: UNKNOWN_GAME_ID, body: 'null' }),
+      BAD_REQUEST_STATUS,
+    ],
+  ])('sends nosniff with %s', async (_case, send, status) => {
+    await startServer();
+
+    const response = await send();
+
+    expect(response.status).toBe(status);
+    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
+  });
+
+  it('sends nosniff with the 500 of an unexpected error', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await startServer({
+      create: async () => { throw new TypeError('Unexpected'); },
+    });
+
+    const response = await fetch(`${server.baseUrl}/game`, { method: 'POST' });
+
+    expect(response.status).toBe(SERVER_ERROR_STATUS);
+    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff');
   });
 
   it.each([

@@ -7,12 +7,15 @@ const {
   SERVER_ERROR_STATUS,
   ROUTE_NOT_FOUND_MESSAGE,
   SERVER_ERROR_MESSAGE,
+  CONTENT_TYPE_OPTIONS_HEADER,
+  NO_SNIFF,
 } = require('./constants');
 
 /**
  * Builds the Express app of the API: the `/game` routes, a JSON 404 for any other path, and an
- * error handler that answers JSON without the stack trace. The Worker serves the files of
- * `public/` before any request reaches this app.
+ * error handler that answers JSON without the stack trace. Every answer sends
+ * `X-Content-Type-Options: nosniff`. The Worker serves the files of `public/` before any request
+ * reaches this app.
  * @param {object} params
  * @param {import('../worker/createGameStore').GameStore} params.games - The games to serve.
  * @param {object} [params.startLimiter] - The Rate Limiting binding that limits the games each
@@ -22,6 +25,12 @@ const {
 const createApp = ({ games, startLimiter }) => {
   const app = express();
   app.disable('x-powered-by');
+
+  // Set before any route, so that the 404 and the error answers carry it too.
+  app.use((req, res, next) => {
+    res.set(CONTENT_TYPE_OPTIONS_HEADER, NO_SNIFF);
+    next();
+  });
 
   app.use('/game', createGameRouter({ games, startLimiter }));
 

@@ -148,7 +148,7 @@ describe('the Worker', () => {
     expect(await spec.text()).toMatch(/^openapi: 3\.1\.0$/m);
   });
 
-  it('sends the security headers of `public/_headers` with the files, not with the API', async () => {
+  it('sends the security headers of `public/_headers` with the files, only nosniff with the API', async () => {
     const [page, script, docs, game] = await Promise.all(
       ['/', '/main.js', '/api/v1/', '/game/unknown/status'].map((route) => harness.fetch(route)),
     );
@@ -160,7 +160,8 @@ describe('the Worker', () => {
     expect(readSecurityHeaders(script)).toEqual([NOSNIFF, REFERRER_POLICY, SITE_ONLY_POLICY]);
     // Its own rule replaces the policy of the whole site, instead of joining it with a comma.
     expect(readSecurityHeaders(docs)).toEqual([NOSNIFF, REFERRER_POLICY, API_DOCS_POLICY]);
-    expect(readSecurityHeaders(game)).toEqual([null, null, null]);
+    // The Express app sends nosniff itself, but none of the policies of the files.
+    expect(readSecurityHeaders(game)).toEqual([NOSNIFF, null, null]);
     await Promise.all([page, script, docs, game].map((response) => response.body.cancel()));
   });
 
