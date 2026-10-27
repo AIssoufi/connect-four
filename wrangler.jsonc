@@ -22,7 +22,28 @@
     }
   ],
   "routes": [{ "pattern": "connect-four.issoufi.fr", "custom_domain": true }],
+  // Serves each branch Preview on workers.dev. It also turns on the Version URLs of production
+  // versions there, which run with the production games and rate limit, like the site.
+  "preview_urls": true,
   "observability": {
     "enabled": true
+  },
+  // What `wrangler preview` gives a branch Preview, which inherits none of the bindings above.
+  // Each Preview gets its own Durable Object storage, so it never reads the production games.
+  "previews": {
+    "durable_objects": {
+      "bindings": [{ "name": "GAMES", "class_name": "Game" }]
+    },
+    // A namespace apart from production, whose counters all the Previews share.
+    "ratelimits": [
+      {
+        "name": "GAME_START_LIMITER",
+        "namespace_id": "1002",
+        "simple": { "limit": 20, "period": 60 }
+      }
+    ],
+    "observability": {
+      "enabled": true
+    }
   }
 }

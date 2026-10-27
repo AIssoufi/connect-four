@@ -117,6 +117,36 @@ pnpm itself). It needs a Cloudflare account that holds the `issoufi.fr` zone: lo
 `pnpm exec wrangler login`, or set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. The Worker
 needs no build step, no variable and no secret.
 
+### Previews
+
+Workers Builds deploys each push to another branch as a
+[Preview](https://developers.cloudflare.com/workers/previews/), with `wrangler preview`, when
+**Enable Preview Builds** is on (Settings > Build > Branch control of the Worker). Its pull
+request gets:
+
+- a `Workers Builds: connect-four` check;
+- a comment with the Preview URL, `<branch>-connect-four.<subdomain>.workers.dev`, which serves
+  the last commit of the branch, and the URL of each deployment.
+
+These URLs are public and send an `X-Robots-Tag: noindex` header.
+
+A Preview inherits none of the production bindings: the `previews` block of `wrangler.jsonc`
+gives it `GAMES` and `GAME_START_LIMITER` bindings apart from those of production.
+
+- Cloudflare gives each Preview its own Durable Object storage, so a Preview never reads or
+  writes the production games.
+- The limit of 20 started games a minute counts on the rate limit namespace `1002`, which all the
+  Previews share, apart from the `1001` of production.
+
+`preview_urls` turns these workers.dev URLs on. It also turns on the
+[Version URLs](https://developers.cloudflare.com/workers/versions-and-deployments/version-urls/)
+of the production versions, which run with the production games and limit, like the site.
+
+`pnpm exec wrangler preview` deploys the current branch by hand, with the account of
+`pnpm run deploy`, and `pnpm exec wrangler preview delete --name <branch>` deletes a Preview.
+Past the limit of the plan (100 Previews on the Free plan), Cloudflare deletes the Preview
+deployed to least recently.
+
 ## Run the tests
 
 `pnpm test` runs the Vitest tests:
