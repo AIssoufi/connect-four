@@ -125,12 +125,15 @@ needs no build step, no variable and no secret.
   Durable Objects;
 - the helpers of the page (`public/utils.test.js`, `public/texts.test.js`) and its calls to the
   API (`public/api.test.js`), with a fake `fetch`;
+- the page script (`public/main.test.js`), run on the elements of `index.html` in a
+  [jsdom](https://github.com/jsdom/jsdom) document with a fake `fetch`;
 - the whole Worker (`index.test.js`), run in the local Workers runtime by `createTestHarness` of
   Wrangler, with its files and its Durable Objects;
 - the commit message checks, which call Git.
 
 They need Node.js 22.13+, 24 or 26+ (the `engines` field of `package.json`). `.nvmrc` gives the
-version used in development and in the CI: 24, an LTS release.
+version used in development and in the CI: 24, an LTS release. jsdom, which only
+`public/main.test.js` loads, declares Node.js 22.22.2+, 24.15+ or 26+.
 
 ## Lint
 
