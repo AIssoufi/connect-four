@@ -3,9 +3,15 @@ import {
 } from 'vitest';
 import { parseMove, isExposedClientError, isStartAllowed } from './utils';
 
-const BODY_ERROR = { error: 'The body must be a JSON object with a playerId and a column.' };
-const PLAYER_ERROR = { error: 'The playerId must be one of: red, yellow.' };
-const COLUMN_ERROR = { error: 'The column must be an integer between 1 and 7.' };
+const BODY_ERROR = {
+  error: { code: 'invalid_move', message: 'The body must be a JSON object with a playerId and a column.' },
+};
+const PLAYER_ERROR = {
+  error: { code: 'invalid_player', message: 'The playerId must be one of: red, yellow.' },
+};
+const COLUMN_ERROR = {
+  error: { code: 'invalid_column', message: 'The column must be an integer between 1 and 7.' },
+};
 
 describe('parseMove', () => {
   it.each([

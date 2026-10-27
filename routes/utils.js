@@ -1,4 +1,9 @@
-const { PLAYER_IDS, FIRST_COLUMN_NUMBER, COLUMN_COUNT } = require('../app/constants');
+const {
+  PLAYER_IDS,
+  FIRST_COLUMN_NUMBER,
+  COLUMN_COUNT,
+  ERROR_CODES,
+} = require('../app/constants');
 const { isKnownPlayer, isValidColumnNumber } = require('../app/utils');
 const { BAD_REQUEST_STATUS, LAST_CLIENT_ERROR_STATUS } = require('./constants');
 const { getClientNetworkKey } = require('./clientNetwork');
@@ -6,22 +11,37 @@ const { getClientNetworkKey } = require('./clientNetwork');
 /**
  * Reads and validates the JSON body of `POST /game/{gameId}/play`.
  * @param {unknown} body - The parsed body, `undefined` when the request sent no JSON.
- * @returns {{ playerId: string, column: number } | { error: string }} The move, or a message
- * explaining what is wrong.
+ * @returns {{ playerId: string, column: number } | { error: { code: string, message: string } }}
+ * The move, or the code and the message that explain what is wrong, ready to send as the body.
  */
 const parseMove = (body) => {
   const isJsonObject = typeof body === 'object' && body !== null && !Array.isArray(body);
   if (!isJsonObject) {
-    return { error: 'The body must be a JSON object with a playerId and a column.' };
+    return {
+      error: {
+        code: ERROR_CODES.INVALID_MOVE,
+        message: 'The body must be a JSON object with a playerId and a column.',
+      },
+    };
   }
 
   const { playerId, column } = body;
   if (!isKnownPlayer(playerId)) {
-    return { error: `The playerId must be one of: ${Object.values(PLAYER_IDS).join(', ')}.` };
+    return {
+      error: {
+        code: ERROR_CODES.INVALID_PLAYER,
+        message: `The playerId must be one of: ${Object.values(PLAYER_IDS).join(', ')}.`,
+      },
+    };
   }
 
   if (!isValidColumnNumber(column)) {
-    return { error: `The column must be an integer between ${FIRST_COLUMN_NUMBER} and ${COLUMN_COUNT}.` };
+    return {
+      error: {
+        code: ERROR_CODES.INVALID_COLUMN,
+        message: `The column must be an integer between ${FIRST_COLUMN_NUMBER} and ${COLUMN_COUNT}.`,
+      },
+    };
   }
 
   return { playerId, column };

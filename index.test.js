@@ -241,7 +241,7 @@ describe('the Worker', () => {
 
     expect(lastMove).toMatchObject({ status: OK_STATUS, body: { winner: 'red', state: 'won' } });
     expect(await play({ gameId: id, move: { playerId: 'yellow', column: 3 } }))
-      .toEqual({ status: BAD_REQUEST_STATUS, body: { message: 'The game is over!' } });
+      .toEqual({ status: BAD_REQUEST_STATUS, body: { code: 'game_over', message: 'The game is over!' } });
   });
 
   it('plays a game until a draw', async () => {
@@ -312,7 +312,7 @@ describe('the Worker', () => {
 
     expect(response).toEqual({
       status: BAD_REQUEST_STATUS,
-      body: { message: 'The column must be an integer between 1 and 7.' },
+      body: { code: 'invalid_column', message: 'The column must be an integer between 1 and 7.' },
     });
     expect((await getStatus(id)).body).toEqual({ id, ...NEW_GAME_STATUS });
   });

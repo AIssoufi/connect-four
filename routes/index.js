@@ -98,7 +98,7 @@ const createGameRouter = ({ games, startLimiter }) => {
   router.route('/:gameId/play').post(parseJsonBody, async (req, res) => {
     const move = parseMove(req.body);
     if (move.error) {
-      res.status(BAD_REQUEST_STATUS).json({ message: move.error });
+      res.status(BAD_REQUEST_STATUS).json(move.error);
       return;
     }
 
@@ -110,7 +110,7 @@ const createGameRouter = ({ games, startLimiter }) => {
     }
 
     if (result.refusal) {
-      res.status(BAD_REQUEST_STATUS).json({ message: result.refusal });
+      res.status(BAD_REQUEST_STATUS).json(result.refusal);
       return;
     }
 
