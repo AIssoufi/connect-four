@@ -5,7 +5,11 @@ const {
   ERROR_CODES,
 } = require('../app/constants');
 const { isKnownPlayer, isValidColumnNumber } = require('../app/utils');
-const { BAD_REQUEST_STATUS, LAST_CLIENT_ERROR_STATUS } = require('./constants');
+const {
+  BAD_REQUEST_STATUS,
+  LAST_CLIENT_ERROR_STATUS,
+  BODY_PARSER_ERROR_CODES,
+} = require('./constants');
 const { getClientNetworkKey } = require('./clientNetwork');
 
 /**
@@ -65,6 +69,21 @@ const isExposedClientError = (error) => {
 };
 
 /**
+ * Gives the error code of a client error that a route passed on, such as a body that
+ * `express.json()` refuses. See `isExposedClientError()`.
+ * @param {unknown} error - The client error.
+ * @returns {string} The code of its `type` in `BODY_PARSER_ERROR_CODES`, or
+ * `ERROR_CODES.INVALID_REQUEST` for any other error.
+ * @example
+ * getClientErrorCode({ type: 'entity.too.large', status: 413, expose: true }); // 'body_too_large'
+ */
+const getClientErrorCode = (error) => {
+  const type = error && error.type;
+
+  return BODY_PARSER_ERROR_CODES.get(type) ?? ERROR_CODES.INVALID_REQUEST;
+};
+
+/**
  * Tells whether a visitor may start one more game, under the Rate Limiting binding of the
  * Worker, which counts the starts of each client network. See `getClientNetworkKey()`.
  * @param {object} params
@@ -89,4 +108,9 @@ const isStartAllowed = async ({ limiter, clientIp }) => {
   return success;
 };
 
-module.exports = { parseMove, isExposedClientError, isStartAllowed };
+module.exports = {
+  parseMove,
+  isExposedClientError,
+  getClientErrorCode,
+  isStartAllowed,
+};

@@ -13,7 +13,7 @@ import {
 import { GAME_ID_LENGTH, GAME_ID_PATTERN } from '../worker/constants';
 
 const NEW_GAME_STATUS = new Engine().getStatus();
-const GAME_NOT_FOUND = { message: 'No game has this id.' };
+const GAME_NOT_FOUND = { code: 'game_not_found', message: 'No game has this id.' };
 const CLIENT_IP = '203.0.113.7';
 const OTHER_CLIENT_IP = '203.0.113.8';
 /** The starts that the counting stand-in of the limiter allows to each key. */
@@ -113,7 +113,7 @@ describe('game routes', () => {
 
       expect(response).toMatchObject({
         status: TOO_MANY_REQUESTS_STATUS,
-        body: { message: TOO_MANY_STARTS_MESSAGE },
+        body: { code: 'too_many_starts', message: TOO_MANY_STARTS_MESSAGE },
       });
       expect(create).not.toHaveBeenCalled();
     });
@@ -133,7 +133,7 @@ describe('game routes', () => {
         .toEqual(Array(FAKE_START_LIMIT).fill(CREATED_STATUS));
       expect(refusedStart).toMatchObject({
         status: TOO_MANY_REQUESTS_STATUS,
-        body: { message: TOO_MANY_STARTS_MESSAGE },
+        body: { code: 'too_many_starts', message: TOO_MANY_STARTS_MESSAGE },
       });
       expect(otherStart.status).toBe(CREATED_STATUS);
       // The starts allowed to the first address, plus the one of the other address.

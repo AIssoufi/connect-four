@@ -78,7 +78,7 @@ describe('createApp', () => {
     const response = await fetch(`${server.baseUrl}${route}`);
 
     expect(response.status).toBe(NOT_FOUND_STATUS);
-    expect(await response.json()).toEqual({ message: 'This route does not exist.' });
+    expect(await response.json()).toEqual({ code: 'route_not_found', message: 'This route does not exist.' });
   });
 
   it.each([
@@ -92,7 +92,7 @@ describe('createApp', () => {
 
     expect(response.status).toBe(NOT_FOUND_STATUS);
     expect(response.headers.get('Allow')).toBeNull();
-    expect(await response.json()).toEqual({ message: 'This route does not exist.' });
+    expect(await response.json()).toEqual({ code: 'route_not_found', message: 'This route does not exist.' });
   });
 
   it.each([
@@ -111,7 +111,7 @@ describe('createApp', () => {
 
     expect(response.status).toBe(METHOD_NOT_ALLOWED_STATUS);
     expect(response.headers.get('Allow')).toBe(allow);
-    expect(await response.json()).toEqual({ message: METHOD_NOT_ALLOWED_MESSAGE });
+    expect(await response.json()).toEqual({ code: 'method_not_allowed', message: METHOD_NOT_ALLOWED_MESSAGE });
   });
 
   it('answers HEAD on a path without GET with 405 and Allow, without a body', async () => {
@@ -223,7 +223,7 @@ describe('createApp', () => {
     const response = await postMove({ gameId: UNKNOWN_GAME_ID, body });
 
     expect(response.status).toBe(BAD_REQUEST_STATUS);
-    expect(await response.json()).toEqual({ message: expect.stringContaining('JSON') });
+    expect(await response.json()).toEqual({ code: 'invalid_json', message: expect.stringContaining('JSON') });
   });
 
   it('refuses a body above the limit of the parser', async () => {
@@ -232,7 +232,7 @@ describe('createApp', () => {
     const response = await postMove({ gameId: UNKNOWN_GAME_ID, body: TOO_LARGE_BODY });
 
     expect(response.status).toBe(PAYLOAD_TOO_LARGE_STATUS);
-    expect(await response.json()).toEqual({ message: 'request entity too large' });
+    expect(await response.json()).toEqual({ code: 'body_too_large', message: 'request entity too large' });
   });
 
   it.each([
@@ -250,7 +250,7 @@ describe('createApp', () => {
     });
 
     expect(response.status).toBe(UNSUPPORTED_MEDIA_TYPE_STATUS);
-    expect(await response.json()).toEqual({ message: 'content encoding unsupported' });
+    expect(await response.json()).toEqual({ code: 'unsupported_encoding', message: 'content encoding unsupported' });
   });
 
   it.each([
@@ -264,7 +264,7 @@ describe('createApp', () => {
 
     // The body passed the parser: only the unknown game is refused.
     expect(response.status).toBe(NOT_FOUND_STATUS);
-    expect(await response.json()).toEqual({ message: 'No game has this id.' });
+    expect(await response.json()).toEqual({ code: 'game_not_found', message: 'No game has this id.' });
   });
 
   it('refuses a charset other than UTF-8 with 415', async () => {
@@ -277,7 +277,24 @@ describe('createApp', () => {
     });
 
     expect(response.status).toBe(UNSUPPORTED_MEDIA_TYPE_STATUS);
-    expect(await response.json()).toEqual({ message: 'unsupported charset "LATIN1"' });
+    expect(await response.json()).toEqual({ code: 'unsupported_charset', message: 'unsupported charset "LATIN1"' });
+  });
+
+  it.each([
+    ['an unknown type', 'request.aborted'],
+    ['no type', undefined],
+  ])('answers an exposed client error with %s with invalid_request', async (_case, type) => {
+    const abortedRequest = Object.assign(new Error('request aborted'), {
+      status: BAD_REQUEST_STATUS, expose: true, type,
+    });
+    await startServer({
+      create: async () => { throw abortedRequest; },
+    });
+
+    const response = await fetch(`${server.baseUrl}/game`, { method: 'POST' });
+
+    expect(response.status).toBe(BAD_REQUEST_STATUS);
+    expect(await response.json()).toEqual({ code: 'invalid_request', message: 'request aborted' });
   });
 
   it('answers 500 without the details of an unexpected error, and logs it', async () => {

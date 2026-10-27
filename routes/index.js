@@ -1,5 +1,6 @@
 // Dependencies
 const express = require('express');
+const { ERROR_CODES } = require('../app/constants');
 const { parseMove, isStartAllowed } = require('./utils');
 const {
   OK_STATUS,
@@ -50,7 +51,10 @@ const answerOtherMethods = (methods) => {
       return;
     }
 
-    res.status(METHOD_NOT_ALLOWED_STATUS).json({ message: METHOD_NOT_ALLOWED_MESSAGE });
+    res.status(METHOD_NOT_ALLOWED_STATUS).json({
+      code: ERROR_CODES.METHOD_NOT_ALLOWED,
+      message: METHOD_NOT_ALLOWED_MESSAGE,
+    });
   };
 };
 
@@ -73,7 +77,10 @@ const createGameRouter = ({ games, startLimiter }) => {
       clientIp: req.get(CLIENT_IP_HEADER),
     });
     if (!isAllowed) {
-      res.status(TOO_MANY_REQUESTS_STATUS).json({ message: TOO_MANY_STARTS_MESSAGE });
+      res.status(TOO_MANY_REQUESTS_STATUS).json({
+        code: ERROR_CODES.TOO_MANY_STARTS,
+        message: TOO_MANY_STARTS_MESSAGE,
+      });
       return;
     }
 
@@ -88,7 +95,10 @@ const createGameRouter = ({ games, startLimiter }) => {
     const { gameId } = req.params;
     const status = await games.getStatus(gameId);
     if (!status) {
-      res.status(NOT_FOUND_STATUS).json({ message: GAME_NOT_FOUND_MESSAGE });
+      res.status(NOT_FOUND_STATUS).json({
+        code: ERROR_CODES.GAME_NOT_FOUND,
+        message: GAME_NOT_FOUND_MESSAGE,
+      });
       return;
     }
 
@@ -105,7 +115,10 @@ const createGameRouter = ({ games, startLimiter }) => {
     const { gameId } = req.params;
     const result = await games.play({ gameId, move });
     if (!result) {
-      res.status(NOT_FOUND_STATUS).json({ message: GAME_NOT_FOUND_MESSAGE });
+      res.status(NOT_FOUND_STATUS).json({
+        code: ERROR_CODES.GAME_NOT_FOUND,
+        message: GAME_NOT_FOUND_MESSAGE,
+      });
       return;
     }
 

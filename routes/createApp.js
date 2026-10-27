@@ -1,7 +1,8 @@
 // Dependencies
 const express = require('express');
+const { ERROR_CODES } = require('../app/constants');
 const createGameRouter = require('./index');
-const { isExposedClientError } = require('./utils');
+const { isExposedClientError, getClientErrorCode } = require('./utils');
 const {
   NOT_FOUND_STATUS,
   SERVER_ERROR_STATUS,
@@ -38,7 +39,10 @@ const createApp = ({ games, startLimiter }) => {
   app.use('/game', createGameRouter({ games, startLimiter }));
 
   app.use((req, res) => {
-    res.status(NOT_FOUND_STATUS).json({ message: ROUTE_NOT_FOUND_MESSAGE });
+    res.status(NOT_FOUND_STATUS).json({
+      code: ERROR_CODES.ROUTE_NOT_FOUND,
+      message: ROUTE_NOT_FOUND_MESSAGE,
+    });
   });
 
   app.use((error, req, res, next) => {
@@ -49,7 +53,7 @@ const createApp = ({ games, startLimiter }) => {
     }
 
     if (isExposedClientError(error)) {
-      res.status(error.status).json({ message: error.message });
+      res.status(error.status).json({ code: getClientErrorCode(error), message: error.message });
       return;
     }
 

@@ -1,7 +1,9 @@
 import {
   describe, it, expect, vi,
 } from 'vitest';
-import { parseMove, isExposedClientError, isStartAllowed } from './utils';
+import {
+  parseMove, isExposedClientError, getClientErrorCode, isStartAllowed,
+} from './utils';
 
 const BODY_ERROR = {
   error: { code: 'invalid_move', message: 'The body must be a JSON object with a playerId and a column.' },
@@ -85,6 +87,30 @@ describe('isExposedClientError', () => {
     ['a NaN status', { expose: true, status: Number.NaN }],
   ])('refuses %s', (_case, error) => {
     expect(isExposedClientError(error)).toBe(false);
+  });
+});
+
+describe('getClientErrorCode', () => {
+  it.each([
+    ['malformed JSON', 'entity.parse.failed', 'invalid_json'],
+    ['a too large body', 'entity.too.large', 'body_too_large'],
+    ['a compressed body', 'encoding.unsupported', 'unsupported_encoding'],
+    ['a charset other than UTF-8', 'charset.unsupported', 'unsupported_charset'],
+  ])('gives the code of %s', (_case, type, code) => {
+    expect(getClientErrorCode({ expose: true, status: 400, type })).toBe(code);
+  });
+
+  it.each([
+    ['no error', undefined],
+    ['null', null],
+    ['an error without type', { expose: true, status: 400 }],
+    ['another type of the parser', { expose: true, status: 400, type: 'request.aborted' }],
+    ['a type in capitals', { expose: true, status: 400, type: 'ENTITY.PARSE.FAILED' }],
+    ['an empty type', { expose: true, status: 400, type: '' }],
+    ['a type that is not a string', { expose: true, status: 400, type: 413 }],
+    ['a key of Object.prototype', { expose: true, status: 400, type: 'constructor' }],
+  ])('gives invalid_request for %s', (_case, error) => {
+    expect(getClientErrorCode(error)).toBe('invalid_request');
   });
 });
 
