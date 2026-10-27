@@ -12,11 +12,20 @@ const {
   NO_SNIFF,
   STRICT_TRANSPORT_SECURITY_HEADER,
   HTTPS_ONLY_FOR_A_YEAR,
+  CONTENT_SECURITY_POLICY_HEADER,
+  SAME_ORIGIN_ONLY_POLICY,
+  ACCEPT_HEADER,
+  NOT_FOUND_FORMATS,
+  HTML_FORMAT,
+  REFERRER_POLICY_HEADER,
+  ORIGIN_ONLY_ACROSS_SITES,
 } = require('./constants');
+const NOT_FOUND_PAGE = require('./notFoundPage');
 
 /**
- * Builds the Express app of the API: the `/game` routes, a JSON 404 for any other path, and an
- * error handler that answers JSON without the stack trace. Every answer sends
+ * Builds the Express app of the API: the `/game` routes, a 404 for any other path (an HTML page
+ * when `Accept` prefers it, as a browser does, JSON otherwise), and an error handler that answers
+ * JSON without the stack trace. Every answer sends
  * `X-Content-Type-Options: nosniff` and `Strict-Transport-Security: max-age=31536000`. The Worker
  * serves the files of `public/` before any request reaches this app.
  * @param {object} params
@@ -39,7 +48,18 @@ const createApp = ({ games, startLimiter }) => {
   app.use('/game', createGameRouter({ games, startLimiter }));
 
   app.use((req, res) => {
-    res.status(NOT_FOUND_STATUS).json({
+    res.vary(ACCEPT_HEADER);
+    res.status(NOT_FOUND_STATUS);
+
+    const prefersPage = req.accepts(NOT_FOUND_FORMATS) === HTML_FORMAT;
+    if (prefersPage) {
+      res.set(CONTENT_SECURITY_POLICY_HEADER, SAME_ORIGIN_ONLY_POLICY);
+      res.set(REFERRER_POLICY_HEADER, ORIGIN_ONLY_ACROSS_SITES);
+      res.type(HTML_FORMAT).send(NOT_FOUND_PAGE);
+      return;
+    }
+
+    res.json({
       code: ERROR_CODES.ROUTE_NOT_FOUND,
       message: ROUTE_NOT_FOUND_MESSAGE,
     });

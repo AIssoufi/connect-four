@@ -1,0 +1,14 @@
+/* The 404 page that the Worker answers to a browser, on top of `style.css`. */
+#not-found {
+  padding: 0 16px;
+  text-align: center;
+}
+
+#not-found ul {
+  padding: 0;
+  list-style: none;
+}
+
+#not-found li {
+  margin: 8px 0;
+}

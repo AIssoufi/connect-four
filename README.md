@@ -75,7 +75,9 @@ SRI hashes of its files.
 An id that no game has returns `404 { "code": "game_not_found", "message": "..." }`, and a route
 that does not exist `404 { "code": "route_not_found", "message": "..." }`. A game is deleted 7
 days after its start or its last move, so its id then returns `404` too. So does an id whose
-percent-encoding cannot be decoded, such as `/game/%E0/status`.
+percent-encoding cannot be decoded, such as `/game/%E0/status`. On a route that does not exist, a
+browser, whose `Accept` prefers `text/html`, gets instead a page in French with links to the game
+and to the API docs; `*/*`, JSON or no `Accept` at all keep the JSON `404`.
 
 A route called with a method it does not serve, such as `GET /game/{gameId}/play` or
 `DELETE /game`, returns `405 { "code": "method_not_allowed", "message": "..." }` with an `Allow`
@@ -94,8 +96,10 @@ The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), d
 - `public/_headers` adds security headers to these files. Its Content-Security-Policy only allows
   the site itself and forbids other sites to frame the pages, and `/api/v1/` has its own to load
   Swagger UI from jsDelivr. Its Strict-Transport-Security keeps browsers on HTTPS for a year, for
-  this host alone. The JSON answers of the Worker do not get these headers: the Express app sends
-  them only `X-Content-Type-Options` and `Strict-Transport-Security`.
+  this host alone. The answers of the Worker do not get these headers: the Express app sends
+  them only `X-Content-Type-Options` and `Strict-Transport-Security`, and its HTML `404` page
+  (`routes/notFoundPage.js`, styled by `public/not-found.css`) the same Content-Security-Policy
+  and Referrer-Policy as the files.
 - The page loads `public/main.js` as an ES module, which draws the game. It calls the API through
   `public/api.js`, imports its rules from `public/utils.js` and the winning cells from
   `public/winning-cells.js`, and writes its texts with `public/texts.js` from the copy of
