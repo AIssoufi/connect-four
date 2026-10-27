@@ -1,5 +1,5 @@
 const GameError = require('./GameError');
-const { isPartOfAlignment } = require('./alignment');
+const { findAlignment } = require('./alignment');
 const { isKnownPlayer, isValidColumnNumber } = require('./utils');
 const {
   PLAYER_IDS,
@@ -23,6 +23,15 @@ const createEmptyBoard = () => Array.from(
 );
 
 /**
+ * Orders two cells as a player reads the board: top row first, then left to right.
+ * @param {{ row: number, column: number }} cell - A cell, row 0 at the top.
+ * @param {{ row: number, column: number }} otherCell - Another cell, row 0 at the top.
+ * @returns {number} A negative number when `cell` comes first, positive when it comes last.
+ */
+const compareInReadingOrder = (cell, otherCell) => cell.row - otherCell.row
+  || cell.column - otherCell.column;
+
+/**
  * Runs one game of Connect Four: it keeps the board, the turn, the tokens left
  * and the result, and refuses any move that breaks a rule with a `GameError`.
  * It does not depend on Express, so any server can host one instance per game.
@@ -38,7 +47,8 @@ class Engine {
   }
 
   /**
-   * Starts a new game: empty board, full token stocks, no last player and no winner.
+   * Starts a new game: empty board, full token stocks, no last player, no winner and no winning
+   * cells.
    * @param {object} [params]
    * @param {string} [params.firstPlayer] - The player who plays first. Defaults to red when it is
    *   not one of `PLAYER_IDS`.
@@ -52,6 +62,7 @@ class Engine {
     };
     this.lastPlayerWhoPlayed = undefined;
     this.winner = undefined;
+    this.winningCells = [];
     this.state = GAME_STATES.PLAYING;
   }
 
@@ -95,14 +106,16 @@ class Engine {
   }
 
   /**
-   * Sets the winner and the state of the game after a token lands in a cell.
+   * Sets the winner, the winning cells and the state of the game after a token lands in a cell.
    * @param {object} params
    * @param {number} params.row - The row index of the new token.
    * @param {number} params.column - The column index of the new token.
    */
   updateState({ row, column }) {
-    if (isPartOfAlignment({ board: this.board, row, column })) {
+    const alignedCells = findAlignment({ board: this.board, row, column });
+    if (alignedCells.length > 0) {
       this.winner = this.lastPlayerWhoPlayed;
+      this.winningCells = alignedCells;
       this.state = GAME_STATES.WON;
       return;
     }
@@ -158,6 +171,19 @@ class Engine {
   }
 
   /**
+   * @returns {Array<{ row: number, column: number }>} The cells of the tokens that won, as
+   * indexes of the board of `getStatus()`, top row first, in reading order: the four cells of the
+   * line, more when the last move made a longer line or two lines. Empty while nobody has won.
+   */
+  getWinningCells() {
+    const topRowIndex = this.board.length - 1;
+
+    return this.winningCells
+      .map(({ row, column }) => ({ row: topRowIndex - row, column }))
+      .sort(compareInReadingOrder);
+  }
+
+  /**
    * Describes the game for the client.
    * @returns {{
    *   players: string[],
@@ -166,7 +192,9 @@ class Engine {
    *   winner: string,
    *   state: string,
    *   board: Array<Array<string|number>>,
-   * }} The status, with `state` one of `GAME_STATES` and the board top row first.
+   *   winningCells: Array<{ row: number, column: number }>,
+   * }} The status, with `state` one of `GAME_STATES`, the board top row first and the winning
+   * cells of `getWinningCells()`.
    */
   getStatus() {
     return {
@@ -176,6 +204,7 @@ class Engine {
       winner: this.getWinner(),
       state: this.state,
       board: this.getBoard().reverse(),
+      winningCells: this.getWinningCells(),
     };
   }
 }

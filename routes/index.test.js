@@ -169,10 +169,11 @@ describe('game routes', () => {
     expect(status).toBe(OK_STATUS);
     expect(body).toMatchObject({ id, lastPlayerWhoPlayed: 'red', tokens: { red: 20, yellow: 21 } });
     expect(body.board[5][0]).toBe('red');
+    expect(body.winningCells).toEqual([]);
     expect((await getStatus(id)).body).toEqual(body);
   });
 
-  it('sets the winner on a winning move', async () => {
+  it('sets the winner and the winning cells on a winning move, and keeps them', async () => {
     const { id } = await startGame();
     const moves = readMoves(RED_WINS_MOVES);
     // The moves must run one after the other, in order.
@@ -182,7 +183,12 @@ describe('game routes', () => {
     );
 
     expect(lastResponse.status).toBe(OK_STATUS);
-    expect(lastResponse.body).toMatchObject({ winner: 'red', state: 'won' });
+    expect(lastResponse.body).toMatchObject({
+      winner: 'red',
+      state: 'won',
+      winningCells: [2, 3, 4, 5].map((row) => ({ row, column: 0 })),
+    });
+    expect((await getStatus(id)).body).toEqual(lastResponse.body);
   });
 
   it('keeps two games apart', async () => {

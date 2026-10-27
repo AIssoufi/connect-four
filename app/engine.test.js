@@ -30,6 +30,7 @@ describe('Engine', () => {
         winner: 'no winner',
         state: 'playing',
         board: Array(6).fill([0, 0, 0, 0, 0, 0, 0]),
+        winningCells: [],
       });
     });
 
@@ -49,6 +50,16 @@ describe('Engine', () => {
 
       expect(engine.getStatus().board[5][0]).toBe(0);
       expect(engine.getStatus().tokens.red).toBe(21);
+    });
+
+    it('returns winning cells that cannot change the game', () => {
+      playMoves({ engine, moves: 'R1 Y2 R1 Y2 R1 Y2 R1' });
+      const status = engine.getStatus();
+      status.winningCells[0].row = 0;
+      status.winningCells.pop();
+
+      expect(engine.getStatus().winningCells)
+        .toEqual([2, 3, 4, 5].map((row) => ({ row, column: 0 })));
     });
 
     it('keeps separate games apart', () => {
@@ -80,33 +91,46 @@ describe('Engine', () => {
     });
 
     it.each([
-      ['a row', 'R1 Y1 R2 Y2 R3 Y3 R4'],
-      ['a column', 'R1 Y2 R1 Y2 R1 Y2 R1'],
-      ['a rising diagonal', 'R1 Y2 R2 Y3 R4 Y3 R3 Y4 R7 Y4 R4'],
-      ['a falling diagonal', 'R4 Y3 R3 Y2 R1 Y2 R2 Y1 R7 Y1 R1'],
-      ['a line completed in its middle', 'R1 Y1 R2 Y2 R4 Y4 R3'],
-    ])('makes the player win with %s', (_line, moves) => {
+      ['a row', 'R1 Y1 R2 Y2 R3 Y3 R4', [[5, 0], [5, 1], [5, 2], [5, 3]]],
+      ['a column', 'R1 Y2 R1 Y2 R1 Y2 R1', [[2, 0], [3, 0], [4, 0], [5, 0]]],
+      ['a rising diagonal', 'R1 Y2 R2 Y3 R4 Y3 R3 Y4 R7 Y4 R4', [[2, 3], [3, 2], [4, 1], [5, 0]]],
+      ['a falling diagonal', 'R4 Y3 R3 Y2 R1 Y2 R2 Y1 R7 Y1 R1', [[2, 0], [3, 1], [4, 2], [5, 3]]],
+      ['a line completed in its middle', 'R1 Y1 R2 Y2 R4 Y4 R3', [[5, 0], [5, 1], [5, 2], [5, 3]]],
+      ['a line of five', 'R1 Y1 R2 Y2 R4 Y4 R5 Y5 R3', [[5, 0], [5, 1], [5, 2], [5, 3], [5, 4]]],
+    ])('makes the player win with %s, and gives its cells top row first', (_line, moves, cells) => {
       playMoves({ engine, moves });
 
-      expect(engine.getStatus()).toMatchObject({ winner: 'red', state: 'won' });
+      expect(engine.getStatus()).toMatchObject({
+        winner: 'red',
+        state: 'won',
+        winningCells: cells.map(([row, column]) => ({ row, column })),
+      });
     });
 
     it('lets the second player win', () => {
       playMoves({ engine, moves: 'R1 Y2 R1 Y2 R1 Y2 R3 Y2' });
 
-      expect(engine.getStatus()).toMatchObject({ winner: 'yellow', state: 'won' });
+      expect(engine.getStatus()).toMatchObject({
+        winner: 'yellow',
+        state: 'won',
+        winningCells: [2, 3, 4, 5].map((row) => ({ row, column: 1 })),
+      });
     });
 
     it('does not count three aligned tokens as a win', () => {
       playMoves({ engine, moves: 'R1 Y1 R2 Y2 R3' });
 
-      expect(engine.getStatus()).toMatchObject({ winner: 'no winner', state: 'playing' });
+      expect(engine.getStatus()).toMatchObject({
+        winner: 'no winner', state: 'playing', winningCells: [],
+      });
     });
 
     it('does not count four tokens with a gap as a win', () => {
       playMoves({ engine, moves: 'R1 Y1 R2 Y2 R4 Y4 R5' });
 
-      expect(engine.getStatus()).toMatchObject({ winner: 'no winner', state: 'playing' });
+      expect(engine.getStatus()).toMatchObject({
+        winner: 'no winner', state: 'playing', winningCells: [],
+      });
     });
 
     it('reports a draw when the board is full without alignment', () => {
@@ -116,6 +140,7 @@ describe('Engine', () => {
         winner: 'no winner',
         state: 'draw',
         tokens: { red: 0, yellow: 0 },
+        winningCells: [],
       });
       expect(engine.getStatus().board.flat()).not.toContain(0);
     });

@@ -60,7 +60,8 @@ SRI hashes of its files.
   returns `429 { "message": "..." }`.
 - `GET /game/{gameId}/status` returns the game: its `id`, the `players`, the `tokens` left,
   `lastPlayerWhoPlayed`, `winner` (`no winner` until a player aligns four tokens), `state`
-  (`playing`, `won` or `draw`) and the `board`, top row first.
+  (`playing`, `won` or `draw`), the `board`, top row first, and `winningCells`: the `row` and
+  `column` indexes in `board` of the tokens that won, in reading order, empty until a win.
 - `POST /game/{gameId}/play` plays the move of its JSON body, `{ "playerId": "red", "column": 1 }`:
   a token of `red` or `yellow` in a column from 1 to 7. It returns the new status. A bad body or
   a move that breaks a rule (game over, not the player's turn, full column) returns
