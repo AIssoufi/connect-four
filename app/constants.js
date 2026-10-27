@@ -35,6 +35,47 @@ const NO_WINNER = 'no winner';
 /** Last player reported before the first move. */
 const NOBODY = 'nobody';
 
+/**
+ * Stable codes of the refusals of the API, sent as `code` next to the English `message` of
+ * every 4xx body, so that a client can explain a refusal without reading its message. The engine
+ * gives the codes of the broken rules, the routes the others. `public/api/v1/openapi.yaml` lists
+ * them: keep both in step.
+ */
+const ERROR_CODES = Object.freeze({
+  /** The player of a move is not one of `PLAYER_IDS`. */
+  INVALID_PLAYER: 'invalid_player',
+  /** The column of a move is not an integer from `FIRST_COLUMN_NUMBER` to `COLUMN_COUNT`. */
+  INVALID_COLUMN: 'invalid_column',
+  /** The game is won or drawn: it accepts no more moves. */
+  GAME_OVER: 'game_over',
+  /** The player who sent the move played the last one. */
+  NOT_YOUR_TURN: 'not_your_turn',
+  /** The player has no token left, which normal play never reaches. */
+  NO_TOKEN_LEFT: 'no_token_left',
+  /** The column of the move has no free cell. */
+  COLUMN_FULL: 'column_full',
+  /** The body of a move is not a JSON object. */
+  INVALID_MOVE: 'invalid_move',
+  /** The body of the request is not valid JSON. */
+  INVALID_JSON: 'invalid_json',
+  /** The body of the request is larger than the parser accepts. */
+  BODY_TOO_LARGE: 'body_too_large',
+  /** The body of the request is compressed, which the parser refuses. */
+  UNSUPPORTED_ENCODING: 'unsupported_encoding',
+  /** The body of the request is in a charset other than UTF-8. */
+  UNSUPPORTED_CHARSET: 'unsupported_charset',
+  /** Any other refusal of the body by the parser. */
+  INVALID_REQUEST: 'invalid_request',
+  /** No game has the id of the request. */
+  GAME_NOT_FOUND: 'game_not_found',
+  /** The API serves no route at this path. */
+  ROUTE_NOT_FOUND: 'route_not_found',
+  /** The path does not serve this method. */
+  METHOD_NOT_ALLOWED: 'method_not_allowed',
+  /** The client network of the visitor started too many games. */
+  TOO_MANY_STARTS: 'too_many_starts',
+});
+
 module.exports = {
   PLAYER_IDS,
   EMPTY_CELL,
@@ -46,4 +87,5 @@ module.exports = {
   GAME_STATES,
   NO_WINNER,
   NOBODY,
+  ERROR_CODES,
 };

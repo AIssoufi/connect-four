@@ -11,6 +11,7 @@ const {
   GAME_STATES,
   NO_WINNER,
   NOBODY,
+  ERROR_CODES,
 } = require('./constants');
 
 /**
@@ -73,30 +74,47 @@ class Engine {
    * @param {number} params.column - The column number, from 1 (left) to `COLUMN_COUNT`.
    * @throws {GameError} When the player or the column is invalid, the game is
    * over, it is the other player's turn, the player has no token left or the
-   * column is full. The game does not change then.
+   * column is full, with the code of the broken rule. The game does not change then.
    */
   play({ playerId, column } = {}) {
     if (!isKnownPlayer(playerId)) {
-      throw new GameError(`The player must be one of: ${Object.values(PLAYER_IDS).join(', ')}!`);
+      throw new GameError({
+        code: ERROR_CODES.INVALID_PLAYER,
+        message: `The player must be one of: ${Object.values(PLAYER_IDS).join(', ')}!`,
+      });
     }
 
     if (!isValidColumnNumber(column)) {
-      throw new GameError(`The column number must be an integer between ${FIRST_COLUMN_NUMBER} and ${COLUMN_COUNT}!`);
+      throw new GameError({
+        code: ERROR_CODES.INVALID_COLUMN,
+        message: `The column number must be an integer between ${FIRST_COLUMN_NUMBER} and ${COLUMN_COUNT}!`,
+      });
     }
 
     const isGameOver = this.state !== GAME_STATES.PLAYING;
-    if (isGameOver) throw new GameError('The game is over!');
+    if (isGameOver) {
+      throw new GameError({ code: ERROR_CODES.GAME_OVER, message: 'The game is over!' });
+    }
 
-    if (!this.isYourTurn(playerId)) throw new GameError(`${playerId}: it's not your turn!`);
+    if (!this.isYourTurn(playerId)) {
+      throw new GameError({ code: ERROR_CODES.NOT_YOUR_TURN, message: `${playerId}: it's not your turn!` });
+    }
 
     // Unreachable in normal play: alternate turns fill the board exactly when both stocks
     // run out, so the game ends first.
-    if (!this.hasEnoughToken(playerId)) throw new GameError('You do not have enough token to play!');
+    if (!this.hasEnoughToken(playerId)) {
+      throw new GameError({
+        code: ERROR_CODES.NO_TOKEN_LEFT,
+        message: 'You do not have enough token to play!',
+      });
+    }
 
     const columnIndex = column - FIRST_COLUMN_NUMBER;
     const rowIndex = this.board.findIndex((row) => row[columnIndex] === EMPTY_CELL);
     const isColumnFull = rowIndex === -1;
-    if (isColumnFull) throw new GameError(`The column ${column} is full!`);
+    if (isColumnFull) {
+      throw new GameError({ code: ERROR_CODES.COLUMN_FULL, message: `The column ${column} is full!` });
+    }
 
     this.board[rowIndex][columnIndex] = playerId;
     this.tokens[playerId] -= 1;
