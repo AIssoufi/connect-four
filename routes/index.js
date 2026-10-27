@@ -4,12 +4,16 @@ const { parseMove, isStartAllowed } = require('./utils');
 const {
   OK_STATUS,
   CREATED_STATUS,
+  NO_CONTENT_STATUS,
   BAD_REQUEST_STATUS,
   NOT_FOUND_STATUS,
+  METHOD_NOT_ALLOWED_STATUS,
   TOO_MANY_REQUESTS_STATUS,
   GAME_NOT_FOUND_MESSAGE,
   TOO_MANY_STARTS_MESSAGE,
+  METHOD_NOT_ALLOWED_MESSAGE,
   CLIENT_IP_HEADER,
+  ALLOW_HEADER,
 } = require('./constants');
 
 /**
@@ -18,8 +22,41 @@ const {
  */
 const parseJsonBody = express.json({ inflate: false });
 
+/** The method that asks a path which methods it serves. */
+const OPTIONS_METHOD = 'OPTIONS';
+
+/** Methods of the paths that start a game or play a move. */
+const WRITE_METHODS = ['POST'];
+
+/** Methods of the path that reads a game: Express answers `HEAD` with the `GET` handler. */
+const READ_METHODS = ['GET', 'HEAD'];
+
 /**
- * Builds the router of the `/game` routes, which start, read and play games by their id.
+ * Builds the handler that ends a path with the methods its other handlers do not serve. Both of
+ * its answers list in `Allow` the methods of the path, `OPTIONS` included: `OPTIONS` gets 204,
+ * any other method 405 with the JSON error. It replaces the automatic `OPTIONS` answer of
+ * Express, which `.all()` turns off.
+ * @param {string[]} methods - The methods that the other handlers of the path serve.
+ * @returns {express.RequestHandler} The handler, to pass to `router.route(...).all()`.
+ */
+const answerOtherMethods = (methods) => {
+  const allowedMethods = [...methods, OPTIONS_METHOD].join(', ');
+
+  return (req, res) => {
+    res.set(ALLOW_HEADER, allowedMethods);
+    const isOptionsRequest = req.method === OPTIONS_METHOD;
+    if (isOptionsRequest) {
+      res.status(NO_CONTENT_STATUS).end();
+      return;
+    }
+
+    res.status(METHOD_NOT_ALLOWED_STATUS).json({ message: METHOD_NOT_ALLOWED_MESSAGE });
+  };
+};
+
+/**
+ * Builds the router of the `/game` routes, which start, read and play games by their id. Each
+ * path answers a method it does not serve with 405 and its methods in `Allow`.
  * `public/api/v1/openapi.yaml` documents these routes: keep both in step.
  * @param {object} params
  * @param {import('../worker/createGameStore').GameStore} params.games - The games to serve.
@@ -30,7 +67,7 @@ const parseJsonBody = express.json({ inflate: false });
 const createGameRouter = ({ games, startLimiter }) => {
   const router = express.Router();
 
-  router.post('/', async (req, res) => {
+  router.route('/').post(async (req, res) => {
     const isAllowed = await isStartAllowed({
       limiter: startLimiter,
       clientIp: req.get(CLIENT_IP_HEADER),
@@ -45,9 +82,9 @@ const createGameRouter = ({ games, startLimiter }) => {
     res.status(CREATED_STATUS)
       .location(`${req.baseUrl}/${gameId}/status`)
       .json({ id: gameId, ...status });
-  });
+  }).all(answerOtherMethods(WRITE_METHODS));
 
-  router.get('/:gameId/status', async (req, res) => {
+  router.route('/:gameId/status').get(async (req, res) => {
     const { gameId } = req.params;
     const status = await games.getStatus(gameId);
     if (!status) {
@@ -56,9 +93,9 @@ const createGameRouter = ({ games, startLimiter }) => {
     }
 
     res.status(OK_STATUS).json({ id: gameId, ...status });
-  });
+  }).all(answerOtherMethods(READ_METHODS));
 
-  router.post('/:gameId/play', parseJsonBody, async (req, res) => {
+  router.route('/:gameId/play').post(parseJsonBody, async (req, res) => {
     const move = parseMove(req.body);
     if (move.error) {
       res.status(BAD_REQUEST_STATUS).json({ message: move.error });
@@ -78,7 +115,7 @@ const createGameRouter = ({ games, startLimiter }) => {
     }
 
     res.status(OK_STATUS).json({ id: gameId, ...result.status });
-  });
+  }).all(answerOtherMethods(WRITE_METHODS));
 
   return router;
 };

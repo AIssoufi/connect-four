@@ -70,6 +70,10 @@ SRI hashes of its files.
 An id that no game has, or a route that does not exist, returns `404 { "message": "..." }`. A
 game is deleted 7 days after its start or its last move, so its id then returns `404` too.
 
+A route called with a method it does not serve, such as `GET /game/{gameId}/play` or
+`DELETE /game`, returns `405 { "message": "..." }` with an `Allow` header that lists its methods.
+`OPTIONS` on a route returns `204` with the same `Allow` header.
+
 ## Architecture
 
 The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), described by

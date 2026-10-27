@@ -7,7 +7,13 @@ import listen from './testServer';
 import createGameStore from '../worker/createGameStore';
 import { createFakeGameNamespace } from '../worker/testDoubles';
 import {
-  BAD_REQUEST_STATUS, CREATED_STATUS, NOT_FOUND_STATUS, SERVER_ERROR_STATUS,
+  OK_STATUS,
+  CREATED_STATUS,
+  NO_CONTENT_STATUS,
+  BAD_REQUEST_STATUS,
+  NOT_FOUND_STATUS,
+  METHOD_NOT_ALLOWED_STATUS,
+  SERVER_ERROR_STATUS,
 } from './constants';
 import { GAME_ID_LENGTH } from '../worker/constants';
 
@@ -19,6 +25,12 @@ const MOVE_BODY = JSON.stringify({ playerId: 'red', column: 1 });
 const TOO_LARGE_BODY = JSON.stringify({ playerId: 'red', column: 1, padding: 'x'.repeat(200000) });
 /** An id that no game has: the body is refused before the id is looked up. */
 const UNKNOWN_GAME_ID = '0'.repeat(GAME_ID_LENGTH);
+/** The message of a 405, written out so that a change of the constant fails the tests. */
+const METHOD_NOT_ALLOWED_MESSAGE = 'This route does not accept this method: see the Allow header.';
+/** The `Allow` header of the paths that start a game or play a move. */
+const WRITE_ALLOW = 'POST, OPTIONS';
+/** The `Allow` header of the path that reads a game. */
+const READ_ALLOW = 'GET, HEAD, OPTIONS';
 /** The headers that every answer of the app carries, with their values. */
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
@@ -69,6 +81,88 @@ describe('createApp', () => {
     expect(await response.json()).toEqual({ message: 'This route does not exist.' });
   });
 
+  it.each([
+    ['the game path without status or play', 'GET', `/game/${UNKNOWN_GAME_ID}`],
+    ['a path under the play route', 'GET', `/game/${UNKNOWN_GAME_ID}/play/1`],
+    ['an unknown path called with DELETE', 'DELETE', '/unknown'],
+  ])('still answers 404 in JSON for %s', async (_case, method, route) => {
+    await startServer();
+
+    const response = await fetch(`${server.baseUrl}${route}`, { method });
+
+    expect(response.status).toBe(NOT_FOUND_STATUS);
+    expect(response.headers.get('Allow')).toBeNull();
+    expect(await response.json()).toEqual({ message: 'This route does not exist.' });
+  });
+
+  it.each([
+    ['GET', `/game/${UNKNOWN_GAME_ID}/play`, WRITE_ALLOW],
+    ['DELETE', '/game', WRITE_ALLOW],
+    ['GET', '/game', WRITE_ALLOW],
+    ['GET', '/game/', WRITE_ALLOW],
+    ['PUT', `/game/${UNKNOWN_GAME_ID}/play`, WRITE_ALLOW],
+    ['POST', `/game/${UNKNOWN_GAME_ID}/status`, READ_ALLOW],
+    ['DELETE', `/game/${UNKNOWN_GAME_ID}/status`, READ_ALLOW],
+    ['PATCH', `/game/${UNKNOWN_GAME_ID}/status/`, READ_ALLOW],
+  ])('answers %s %s with 405 and Allow: %s', async (method, route, allow) => {
+    await startServer();
+
+    const response = await fetch(`${server.baseUrl}${route}`, { method });
+
+    expect(response.status).toBe(METHOD_NOT_ALLOWED_STATUS);
+    expect(response.headers.get('Allow')).toBe(allow);
+    expect(await response.json()).toEqual({ message: METHOD_NOT_ALLOWED_MESSAGE });
+  });
+
+  it('answers HEAD on a path without GET with 405 and Allow, without a body', async () => {
+    await startServer();
+
+    const response = await fetch(`${server.baseUrl}/game`, { method: 'HEAD' });
+
+    expect(response.status).toBe(METHOD_NOT_ALLOWED_STATUS);
+    expect(response.headers.get('Allow')).toBe(WRITE_ALLOW);
+    expect(await response.text()).toBe('');
+  });
+
+  it('answers HEAD on the status path with its GET handler', async () => {
+    await startServer();
+
+    const response = await fetch(`${server.baseUrl}/game/${UNKNOWN_GAME_ID}/status`, {
+      method: 'HEAD',
+    });
+
+    // The GET handler looked the id up: HEAD is one of the methods of the path.
+    expect(response.status).toBe(NOT_FOUND_STATUS);
+    expect(response.headers.get('Allow')).toBeNull();
+  });
+
+  it.each([
+    ['/game', WRITE_ALLOW],
+    [`/game/${UNKNOWN_GAME_ID}/play`, WRITE_ALLOW],
+    [`/game/${UNKNOWN_GAME_ID}/status`, READ_ALLOW],
+  ])('answers OPTIONS %s with 204 and Allow: %s', async (route, allow) => {
+    await startServer();
+
+    const response = await fetch(`${server.baseUrl}${route}`, { method: 'OPTIONS' });
+
+    expect(response.status).toBe(NO_CONTENT_STATUS);
+    expect(response.headers.get('Allow')).toBe(allow);
+    expect(await response.text()).toBe('');
+  });
+
+  it('serves the methods that Allow lists', async () => {
+    await startServer();
+
+    const startResponse = await fetch(`${server.baseUrl}/game`, { method: 'POST' });
+    const { id } = await startResponse.json();
+    const statusResponse = await fetch(`${server.baseUrl}/game/${id}/status`);
+    const playResponse = await postMove({ gameId: id, body: MOVE_BODY });
+
+    expect(startResponse.status).toBe(CREATED_STATUS);
+    expect(statusResponse.status).toBe(OK_STATUS);
+    expect(playResponse.status).toBe(OK_STATUS);
+  });
+
   it('does not say that Express serves the API', async () => {
     await startServer();
 
@@ -88,6 +182,11 @@ describe('createApp', () => {
 
   it.each([
     ['the JSON 404', () => fetch(`${server.baseUrl}/`), NOT_FOUND_STATUS],
+    [
+      'the 405 of a method that a path does not serve',
+      () => fetch(`${server.baseUrl}/game`, { method: 'DELETE' }),
+      METHOD_NOT_ALLOWED_STATUS,
+    ],
     [
       'the refusal of a body by the parser',
       () => postMove({ gameId: UNKNOWN_GAME_ID, body: 'null' }),

@@ -1,12 +1,19 @@
 openapi: 3.1.0
 info:
   title: Connect Four API
-  version: 2.1.0
+  version: 2.2.0
   description: >-
     Plays games of Connect Four between a red and a yellow player, red first. Each game has its
     own id: start one with `POST /game`, then read it and play its moves with that id. A game
     ends when a player aligns four tokens, or in a draw when the board is full. A game is
     deleted 7 days after its start or its last move.
+
+
+    Each path also answers `OPTIONS` with `204` and an `Allow` header that lists its methods:
+    `POST, OPTIONS` for `/game` and `/game/{gameId}/play`, `GET, HEAD, OPTIONS` for
+    `/game/{gameId}/status`. Any other method gets `405` with the same `Allow` header and the
+    body `{"message": "This route does not accept this method: see the Allow header."}`. A path
+    that the API does not serve gets `404` with `{"message": "This route does not exist."}`.
   license:
     name: ISC
     identifier: ISC
