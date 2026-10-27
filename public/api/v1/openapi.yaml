@@ -33,8 +33,8 @@ paths:
       operationId: startGame
       summary: Start a new game
       description: >-
-        Starts an empty game, which only its id gives access to. Each IP address may start 20
-        games a minute.
+        Starts an empty game, which only its id gives access to. Each client network (an IPv4
+        address or an IPv6 /64 prefix) may start 20 games a minute.
       responses:
         '201':
           description: The new game, where red plays first.
@@ -53,7 +53,7 @@ paths:
                 newGame:
                   $ref: '#/components/examples/NewGame'
         '429':
-          description: This IP address started too many games in the last minute.
+          description: This client network started too many games in the last minute.
           content:
             application/json:
               schema:
