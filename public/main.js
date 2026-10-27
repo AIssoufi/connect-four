@@ -1,6 +1,6 @@
 import {
   COLUMN_PICKER_CLASS_NAME, CURRENT_PLAYER_CLASS_PREFIX, GAME_ROUTE, PICKER_TOKEN_CLASS_NAME,
-  ROW_CLASS_NAME, SELECTORS, VISUALLY_HIDDEN_CLASS_NAME,
+  ROW_CLASS_NAME, SELECTORS, VISUALLY_HIDDEN_CLASS_NAME, WINNING_CELL_CLASS_NAME,
 } from './constants.js';
 import { getPlayRoute, requestGame } from './api.js';
 import {
@@ -10,6 +10,7 @@ import {
   getBoardKey, getCellClassName, getColumnTabIndex, getNextColumnIndex, getNextPlayer,
   getPositionNumber, isBoardSize, isColumnFull, isGameOver,
 } from './utils.js';
+import { getWinningCells, isWinningCell } from './winning-cells.js';
 
 /** The game status shown on the page, `undefined` until a game starts. */
 let currentGame;
@@ -69,11 +70,15 @@ const buildBoard = ({ boardElem, rowCount, columnCount }) => {
 };
 
 /**
- * Shows the tokens of a board. The cells are updated in place, and nothing changes when the
- * board is the one drawn last, so that a screen reader keeps its place in the board.
- * @param {Array<Array<string|number>>} board - The board, top row first.
+ * Shows the tokens of a board, and marks the ones of the line that won. The cells are updated in
+ * place, and nothing changes when the board is the one drawn last, so that a screen reader keeps
+ * its place in the board: the winning cells come with the move that changes the board.
+ * @param {object} params
+ * @param {Array<Array<string|number>>} params.board - The board, top row first.
+ * @param {Array<{ row: number, column: number }>} params.winningCells - The cells that won, from
+ *   `getWinningCells`, empty while nobody won.
  */
-const renderBoard = (board) => {
+const renderBoard = ({ board, winningCells }) => {
   const boardKey = getBoardKey(board);
   if (boardKey === drawnBoardKey) {
     return;
@@ -93,7 +98,11 @@ const renderBoard = (board) => {
     row.forEach((token, columnIndex) => {
       const cellElem = boardElem.children[rowIndex].children[columnIndex];
       cellElem.className = getCellClassName(token);
-      cellElem.firstElementChild.textContent = getCellLabel({ rowIndex, columnIndex, token });
+      const isWinning = isWinningCell({ winningCells, rowIndex, columnIndex });
+      cellElem.classList.toggle(WINNING_CELL_CLASS_NAME, isWinning);
+      cellElem.firstElementChild.textContent = getCellLabel({
+        rowIndex, columnIndex, token, isWinning,
+      });
     });
   });
 
@@ -203,7 +212,7 @@ const renderControlPanel = (game) => {
  */
 const updateGame = (game) => {
   currentGame = game;
-  renderBoard(game.board);
+  renderBoard({ board: game.board, winningCells: getWinningCells(game) });
   renderControlPanel(game);
   showText({ selector: SELECTORS.status, text: getStatusText(game) });
 };

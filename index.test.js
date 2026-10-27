@@ -166,7 +166,9 @@ describe('the Worker', () => {
   });
 
   it('serves the modules of the page, but not their tests', async () => {
-    const modules = ['/main.js', '/constants.js', '/utils.js', '/texts.js', '/api.js'];
+    const modules = [
+      '/main.js', '/constants.js', '/utils.js', '/winning-cells.js', '/texts.js', '/api.js',
+    ];
     const helpers = await Promise.all(modules.map((route) => harness.fetch(route)));
     const tests = await harness.fetch('/utils.test.js');
 

@@ -183,3 +183,15 @@ body main .yellow-token, #board .column.yellow-token {
   white-space: nowrap;
   border: 0;
 }
+
+/*
+ * A white ring around the tokens of the line that won shows them without relying on their color.
+ * An outline follows the round cell and stays in the forced colors of the system.
+ */
+#board .column.winning-cell {
+  --winning-ring-color: white;
+  --winning-ring-width: calc(var(--token-size) / 10);
+  --winning-ring-gap: calc(var(--token-size) / 20);
+  outline: var(--winning-ring-width) solid var(--winning-ring-color);
+  outline-offset: var(--winning-ring-gap);
+}

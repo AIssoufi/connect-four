@@ -19,6 +19,18 @@ const GAME = {
   board: BOARD,
 };
 
+/** The number of rows and of columns of the board of a real game. */
+const ROW_COUNT = 6;
+const COLUMN_COUNT = 7;
+
+/** A game that red won, on a board of the size of a real game. */
+const WON_GAME = {
+  ...GAME,
+  state: 'won',
+  winner: 'red',
+  board: Array.from({ length: ROW_COUNT }, () => Array(COLUMN_COUNT).fill(0)),
+};
+
 describe('fillText', () => {
   it('puts each value in its placeholder', () => {
     const values = { number: 3, color: 'rouge' };
@@ -52,6 +64,42 @@ describe('getStatusText', () => {
   it('says who won', () => {
     expect(getStatusText({ ...GAME, state: 'won', winner: 'red' })).toBe('Rouge a gagné.');
     expect(getStatusText({ ...GAME, state: 'won', winner: 'yellow' })).toBe('Jaune a gagné.');
+  });
+
+  it('says who won and names the winning cells, numbered from 1, top row first', () => {
+    const winningCells = [2, 3, 4, 5].map((row) => ({ row, column: 0 }));
+
+    expect(getStatusText({ ...WON_GAME, winningCells }))
+      .toBe('Rouge a gagné : ligne 3 colonne 1, ligne 4 colonne 1, ligne 5 colonne 1 et ligne 6 colonne 1.');
+  });
+
+  it('names every cell of a line of five', () => {
+    const winningCells = [0, 1, 2, 3, 4].map((column) => ({ row: 5, column }));
+
+    expect(getStatusText({ ...WON_GAME, winner: 'yellow', winningCells }))
+      .toBe('Jaune a gagné : ligne 6 colonne 1, ligne 6 colonne 2, ligne 6 colonne 3, ligne 6 colonne 4 et ligne 6 colonne 5.');
+  });
+
+  it('names only the items of the winning cells that are cells of the board', () => {
+    const winningCells = [
+      { row: 5, column: 6 }, { row: 6, column: 0 }, { row: 0, column: 7 }, { row: -1, column: 0 },
+      { row: 1.5, column: 0 }, { row: '1', column: 0 }, { row: Number.NaN, column: 0 },
+      { row: 1 }, null, 'ligne 1', [1, 2],
+    ];
+
+    expect(getStatusText({ ...WON_GAME, winningCells }))
+      .toBe('Rouge a gagné : ligne 6 colonne 7.');
+  });
+
+  it.each([
+    ['empty', []],
+    ['missing', undefined],
+    ['null', null],
+    ['not a list', { row: 0, column: 0 }],
+    ['a list without cell position', [null, { row: -1, column: 0 }]],
+    ['outside the board', [{ row: 6, column: 0 }]],
+  ])('says who won without cells when the winning cells are %s', (_case, winningCells) => {
+    expect(getStatusText({ ...WON_GAME, winningCells })).toBe('Rouge a gagné.');
   });
 
   it('says that the game is a draw', () => {
@@ -126,8 +174,39 @@ describe('getCellLabel', () => {
       .toBe('Ligne 1, colonne 1 : vide');
   });
 
+  it('says that a token of the line that won is a winning token', () => {
+    expect(getCellLabel({
+      rowIndex: 2, columnIndex: 0, token: 'red', isWinning: true,
+    })).toBe('Ligne 3, colonne 1 : rouge, jeton gagnant');
+    expect(getCellLabel({
+      rowIndex: 5, columnIndex: 6, token: 'yellow', isWinning: true,
+    })).toBe('Ligne 6, colonne 7 : jaune, jeton gagnant');
+  });
+
+  it.each([
+    ['false', false],
+    ['missing', undefined],
+    ['the string true', 'true'],
+    ['1', 1],
+  ])('reads a plain token when the winning flag is %s', (_case, isWinning) => {
+    expect(getCellLabel({
+      rowIndex: 2, columnIndex: 0, token: 'red', isWinning,
+    })).toBe('Ligne 3, colonne 1 : rouge');
+  });
+
+  it('never calls an empty or unknown cell a winning token', () => {
+    expect(getCellLabel({
+      rowIndex: 0, columnIndex: 0, token: 0, isWinning: true,
+    })).toBe('Ligne 1, colonne 1 : vide');
+    expect(getCellLabel({
+      rowIndex: 0, columnIndex: 0, token: 'blue', isWinning: true,
+    })).toBe('Ligne 1, colonne 1 : vide');
+  });
+
   it('writes ? for a missing or invalid row or column', () => {
     expect(getCellLabel({ token: 'red' })).toBe('Ligne ?, colonne ? : rouge');
+    expect(getCellLabel({ token: 'red', isWinning: true }))
+      .toBe('Ligne ?, colonne ? : rouge, jeton gagnant');
     expect(getCellLabel({ rowIndex: -1, columnIndex: 1.5, token: 'red' }))
       .toBe('Ligne ?, colonne ? : rouge');
   });
