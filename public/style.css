@@ -20,6 +20,18 @@ body header {
   text-align: center;
 }
 
+/* 44 px tall, the touch target that phone guidelines recommend. */
+#new-game {
+  min-height: 44px;
+  padding: 8px 16px;
+  font: inherit;
+}
+
+#new-game:focus-visible {
+  outline: 3px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
 body main {
   display: flex;
   flex-direction: column;
