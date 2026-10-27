@@ -20,6 +20,7 @@ the review:
 | ESLint 10, any warning an error (`pnpm lint:js`) | `Lint and test` | yes |
 | Redocly CLI on the OpenAPI document (`pnpm lint:api`) | `Lint and test` | yes |
 | Vitest: engine, routes, storage, page, the whole Worker, hooks | `Lint and test` | yes |
+| `pnpm audit --audit-level moderate`, also every Monday on `master` | `Lint and test` | yes |
 | The same tests on the oldest and newest Node.js majors | `Test on Node.js 22`, `26` | yes |
 | commitlint on each commit and on the title | `Check the commit messages…` | no |
 | commitlint on each new commit, before it is written | the `commit-msg` hook | |
@@ -27,5 +28,9 @@ the review:
 The required checks come from the `Protect master` ruleset, which also wants the branch up to date
 with `master` before the merge. The full name of the commitlint check is `Check the commit
 messages and the title`.
+
+The audit stands in for the security alerts of Dependabot: GitHub's dependency graph reads only
+the first YAML document of the pnpm 12 lockfile, which lists only pnpm and its binaries, so no
+alert reaches the repository.
 
 [reviews-and-quality]: https://github.com/AIssoufi/AIssoufi/blob/main/docs/agentic-architecture/reviews-and-quality.md

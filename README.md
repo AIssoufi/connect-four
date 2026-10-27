@@ -180,13 +180,25 @@ version used in development and in the CI: 24, an LTS release. jsdom, which only
 
 ## Continuous integration
 
-GitHub Actions runs `.github/workflows/ci.yml` on every pull request and every push to `master`:
+GitHub Actions runs `.github/workflows/ci.yml` on every pull request, every push to `master`,
+and on `master` every Monday at 05:23 UTC:
 
-- `pnpm install --frozen-lockfile`, `pnpm lint` and `pnpm test` on the Node.js version of
-  `.nvmrc`;
+- `pnpm install --frozen-lockfile`, `pnpm audit --audit-level moderate`, `pnpm lint` and
+  `pnpm test` on the Node.js version of `.nvmrc`;
 - `pnpm install --frozen-lockfile` and `pnpm test` on Node.js 22 and 26: the oldest major release
   that `engines` accepts and the newest one released. Dependabot does not update this matrix:
   add each new major release of Node.js to it by hand.
+
+The audit fails the run on any advisory at or above moderate:
+
+- it replaces the security alerts of Dependabot, which never fire here: GitHub's dependency graph
+  reads only the first YAML document of `pnpm-lock.yaml`, which pnpm 12 fills with pnpm itself
+  and its binaries alone;
+- the weekly run catches a new advisory, or a drift of the tools, without waiting for a pull
+  request;
+- like the live check below, a failed weekly run is e-mailed to the user who last changed the
+  `cron`, and GitHub turns the schedule off after 60 days without activity: turn it back on with
+  "Enable workflow" in the Actions tab.
 
 Each job sets pnpm up with `pnpm/action-setup`, which reads the `packageManager` field. It is
 pinned to the commit of v6.1.0, the first release that starts from pnpm 12 instead of 11, since
