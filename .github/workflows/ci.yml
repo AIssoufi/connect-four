@@ -4,6 +4,10 @@ on:
   pull_request:
   push:
     branches: [master]
+  # Runs on master every Monday, so a new advisory fails the audit without waiting for a pull
+  # request.
+  schedule:
+    - cron: '23 5 * * 1'
 
 permissions:
   contents: read
@@ -38,6 +42,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # GitHub's dependency graph reads only the first YAML document of the pnpm 12 lockfile, so no
+      # Dependabot security alert reaches the repository: this audit replaces them.
+      - name: Audit the dependencies
+        run: pnpm audit --audit-level moderate
 
       - name: Lint
         run: pnpm lint
