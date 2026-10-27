@@ -15,9 +15,11 @@ minimumReleaseAgeExclude:
 overrides:
   body-parser: ^2.4.0
   undici: ^7.30.1
-# Runs no install script of a dependency unless it is set to true here. Both scripts only check
-# the binary of the optional package for the current platform, which pnpm installs anyway, and
-# download it when that package is missing
+# Runs no install script of a dependency unless it is set to true here. The scripts of esbuild
+# and workerd only check the binary of the optional package for the current platform, which pnpm
+# installs anyway, and download it when that package is missing
 allowBuilds:
   esbuild: false
   workerd: false
+  # The install script of this dependency of swagger-ui-dist only sends usage analytics
+  '@scarf/scarf': false
