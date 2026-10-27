@@ -15,6 +15,28 @@ import { GAME_ID_LENGTH, GAME_ID_PATTERN } from '../worker/constants';
 const NEW_GAME_STATUS = new Engine().getStatus();
 const GAME_NOT_FOUND = { message: 'No game has this id.' };
 const CLIENT_IP = '203.0.113.7';
+const OTHER_CLIENT_IP = '203.0.113.8';
+/** The starts that the counting stand-in of the limiter allows to each address. */
+const FAKE_START_LIMIT = 3;
+const TOO_MANY_STARTS_MESSAGE = 'Too many games started from this address: try again later.';
+
+/**
+ * Builds the `limit` of a stand-in for the Rate Limiting binding that counts the calls of each
+ * key and allows `limit` of them. Its count never restarts, unlike the windows of the real
+ * binding, so the tests of the exact limit do not depend on the clock.
+ * @param {number} limit - The calls allowed to each key.
+ * @returns {(options: { key: string }) => Promise<{ success: boolean }>} The `limit` method.
+ */
+const countCallsByKey = (limit) => {
+  const callCounts = new Map();
+
+  return async ({ key }) => {
+    const callCount = (callCounts.get(key) ?? 0) + 1;
+    callCounts.set(key, callCount);
+
+    return { success: callCount <= limit };
+  };
+};
 
 describe('game routes', () => {
   let server;
@@ -91,9 +113,31 @@ describe('game routes', () => {
 
       expect(response).toMatchObject({
         status: TOO_MANY_REQUESTS_STATUS,
-        body: { message: 'Too many games started from this address: try again later.' },
+        body: { message: TOO_MANY_STARTS_MESSAGE },
       });
       expect(create).not.toHaveBeenCalled();
+    });
+
+    it('starts the games of one address up to the limit and refuses the next, not another address', async () => {
+      startLimiter.limit.mockImplementation(countCallsByKey(FAKE_START_LIMIT));
+      const create = vi.spyOn(games, 'create');
+      const limitedHeaders = { 'CF-Connecting-IP': CLIENT_IP };
+
+      const allowedStarts = await Promise.all(
+        Array.from({ length: FAKE_START_LIMIT }, () => postGame(limitedHeaders)),
+      );
+      const refusedStart = await postGame(limitedHeaders);
+      const otherStart = await postGame({ 'CF-Connecting-IP': OTHER_CLIENT_IP });
+
+      expect(allowedStarts.map(({ status }) => status))
+        .toEqual(Array(FAKE_START_LIMIT).fill(CREATED_STATUS));
+      expect(refusedStart).toMatchObject({
+        status: TOO_MANY_REQUESTS_STATUS,
+        body: { message: TOO_MANY_STARTS_MESSAGE },
+      });
+      expect(otherStart.status).toBe(CREATED_STATUS);
+      // The starts allowed to the first address, plus the one of the other address.
+      expect(create).toHaveBeenCalledTimes(FAKE_START_LIMIT + 1);
     });
 
     it('limits neither the reads nor the moves', async () => {
