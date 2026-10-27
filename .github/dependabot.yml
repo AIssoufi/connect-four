@@ -14,6 +14,8 @@ updates:
     groups:
       minor-and-patch:
         update-types: [minor, patch]
+        # Its bump fails the tests until the API docs page follows, so it comes in its own PR
+        exclude-patterns: ['swagger-ui-dist']
     # The major updates of npm go through tickets, such as #15 for ESLint
     ignore:
       - dependency-name: '*'
