@@ -58,7 +58,7 @@ SRI hashes of its files.
 
 - `POST /game` starts a game. It returns `201` with the game, whose `id` the other routes take,
   and a `Location` header to read it. Each client network may start 20 games a minute: beyond, it
-  returns `429 { "message": "..." }`.
+  returns `429 { "code": "too_many_starts", "message": "..." }`.
 - `GET /game/{gameId}/status` returns the game: its `id`, the `players`, the `tokens` left,
   `lastPlayerWhoPlayed`, `winner` (`no winner` until a player aligns four tokens), `state`
   (`playing`, `won` or `draw`), the `board`, top row first, and `winningCells`: the `row` and
@@ -66,14 +66,18 @@ SRI hashes of its files.
 - `POST /game/{gameId}/play` plays the move of its JSON body, `{ "playerId": "red", "column": 1 }`:
   a token of `red` or `yellow` in a column from 1 to 7. It returns the new status. A bad body or
   a move that breaks a rule (game over, not the player's turn, full column) returns
-  `400 { "message": "..." }` and leaves the game unchanged.
+  `400 { "code": "...", "message": "..." }`, such as `column_full`, and leaves the game unchanged.
 
-An id that no game has, or a route that does not exist, returns `404 { "message": "..." }`. A
-game is deleted 7 days after its start or its last move, so its id then returns `404` too.
+An id that no game has returns `404 { "code": "game_not_found", "message": "..." }`, and a route
+that does not exist `404 { "code": "route_not_found", "message": "..." }`. A game is deleted 7
+days after its start or its last move, so its id then returns `404` too.
 
 A route called with a method it does not serve, such as `GET /game/{gameId}/play` or
-`DELETE /game`, returns `405 { "message": "..." }` with an `Allow` header that lists its methods.
-`OPTIONS` on a route returns `204` with the same `Allow` header.
+`DELETE /game`, returns `405 { "code": "method_not_allowed", "message": "..." }` with an `Allow`
+header that lists its methods. `OPTIONS` on a route returns `204` with the same `Allow` header.
+
+Every `4xx` body carries a `code` from a fixed list, for a client to test, next to a `message` in
+English, which may change. The OpenAPI document lists and describes each code.
 
 ## Architecture
 
