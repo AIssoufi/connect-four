@@ -95,6 +95,9 @@ export const FULL_COLUMN_LABEL = 'Colonne {number} pleine';
  */
 export const CELL_LABEL = 'Ligne {row}, colonne {column} : {content}';
 
+/** The text that a screen reader reads for a token of the line that won, as in `CELL_LABEL`. */
+export const WINNING_CELL_LABEL = 'Ligne {row}, colonne {column} : {content}, jeton gagnant';
+
 /** The name of what an empty cell holds, in `CELL_LABEL`. */
 export const EMPTY_CELL_NAME = 'vide';
 

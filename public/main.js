@@ -100,7 +100,9 @@ const renderBoard = ({ board, winningCells }) => {
       cellElem.className = getCellClassName(token);
       const isWinning = isWinningCell({ winningCells, rowIndex, columnIndex });
       cellElem.classList.toggle(WINNING_CELL_CLASS_NAME, isWinning);
-      cellElem.firstElementChild.textContent = getCellLabel({ rowIndex, columnIndex, token });
+      cellElem.firstElementChild.textContent = getCellLabel({
+        rowIndex, columnIndex, token, isWinning,
+      });
     });
   });
 

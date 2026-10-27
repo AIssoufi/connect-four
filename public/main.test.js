@@ -123,6 +123,12 @@ const getPickerAttributes = (attributeName) => getPickers().map(
   (pickerElem) => pickerElem.getAttribute(attributeName),
 );
 
+/** @returns {string[]} The texts that a screen reader reads for the cells, top row first. */
+const getCellLabels = () => Array.from(
+  document.querySelectorAll(`${SELECTORS.board} [role="cell"]`),
+  (cellElem) => cellElem.textContent,
+);
+
 /** @returns {string[]} The class names of the cells of the board, top row first. */
 const getCellClassNames = () => Array.from(
   document.querySelectorAll(`${SELECTORS.board} [role="cell"]`),
@@ -287,6 +293,26 @@ describe('showing the winning cells', () => {
     expect(getCellClassNames()).toEqual(WON_BOARD_CLASS_NAMES);
     expect(getText(SELECTORS.status)).toBe(getStatusText(WON_GAME));
     expect(getText(SELECTORS.status)).toContain('ligne 1 colonne 1 et ligne 2 colonne 1');
+  });
+
+  it('tells a screen reader which tokens won, and forgets it in a new game', async () => {
+    await loadPageWithGame(WON_GAME);
+
+    expect(getCellLabels()).toEqual([
+      'Ligne 1, colonne 1 : rouge, jeton gagnant', 'Ligne 1, colonne 2 : jaune',
+      'Ligne 1, colonne 3 : vide',
+      'Ligne 2, colonne 1 : rouge, jeton gagnant', 'Ligne 2, colonne 2 : jaune',
+      'Ligne 2, colonne 3 : vide',
+    ]);
+
+    fetchGame.mockResolvedValueOnce(gameResponse(NEW_GAME));
+    clickNewGame();
+    await settle();
+
+    expect(getCellLabels()).toEqual([
+      'Ligne 1, colonne 1 : vide', 'Ligne 1, colonne 2 : vide', 'Ligne 1, colonne 3 : vide',
+      'Ligne 2, colonne 1 : vide', 'Ligne 2, colonne 2 : vide', 'Ligne 2, colonne 3 : vide',
+    ]);
   });
 
   it('marks no cell when the winning cells are no cells of the board', async () => {

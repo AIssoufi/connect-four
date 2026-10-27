@@ -1,7 +1,7 @@
 import {
   CELL_LABEL, COLUMN_LABEL, DRAW_TEXT, EMPTY_CELL_NAME, FULL_COLUMN_LABEL, FULL_COLUMN_MESSAGE,
   GAME_OVER_MESSAGE, GAME_STATES, PAGE_LOCALE, TURN_TEXT, WIN_TEXT, WIN_WITH_CELLS_TEXT,
-  WINNING_CELL_NAME,
+  WINNING_CELL_LABEL, WINNING_CELL_NAME,
 } from './constants.js';
 import {
   getNextPlayer, getPlayerColorName, getPositionNumber, isColumnFull, isGameOver,
@@ -134,17 +134,28 @@ export const getMoveRefusal = ({ game, columnIndex }) => {
  * @param {number} params.rowIndex - The index of the row, from 0 for the top one.
  * @param {number} params.columnIndex - The index of the column, from 0 for the left one.
  * @param {string|number} params.token - The cell value: a player id, or `0` when empty.
- * @returns {string} The row and the column, numbered from 1, then the color of the token. A value
- *   that is no known player reads as an empty cell, as the board draws it, and `?` stands for a
+ * @param {boolean} [params.isWinning] - Whether the cell belongs to the line that won.
+ * @returns {string} The row and the column, numbered from 1, then the color of the token, and
+ *   that it is a winning token when `isWinning` is `true` for a token of a player. A value that
+ *   is no known player reads as an empty cell, as the board draws it, and `?` stands for a
  *   missing or invalid row or column.
  * @example getCellLabel({ rowIndex: 2, columnIndex: 1, token: 'red' })
  *   // 'Ligne 3, colonne 2 : rouge'
+ * @example getCellLabel({ rowIndex: 2, columnIndex: 0, token: 'red', isWinning: true })
+ *   // 'Ligne 3, colonne 1 : rouge, jeton gagnant'
  */
-export const getCellLabel = ({ rowIndex, columnIndex, token }) => fillText({
-  template: CELL_LABEL,
-  values: {
-    row: getPositionNumber(rowIndex),
-    column: getPositionNumber(columnIndex),
-    content: getPlayerColorName(token) ?? EMPTY_CELL_NAME,
-  },
-});
+export const getCellLabel = ({
+  rowIndex, columnIndex, token, isWinning = false,
+}) => {
+  const colorName = getPlayerColorName(token);
+  const isWinningToken = isWinning === true && colorName !== null;
+
+  return fillText({
+    template: isWinningToken ? WINNING_CELL_LABEL : CELL_LABEL,
+    values: {
+      row: getPositionNumber(rowIndex),
+      column: getPositionNumber(columnIndex),
+      content: colorName ?? EMPTY_CELL_NAME,
+    },
+  });
+};

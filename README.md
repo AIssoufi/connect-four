@@ -31,6 +31,7 @@ The page can also be played on a phone, with the keyboard alone and with a scree
 - After a win, a white ring around the tokens shows the line that won, and the status names its
   cells, such as "Rouge a gagné : ligne 3 colonne 1, ligne 4 colonne 1, ligne 5 colonne 1 et
   ligne 6 colonne 1."
+- Screen readers then add "jeton gagnant" to the label of each of those tokens.
 
 ## Stack
 
