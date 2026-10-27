@@ -5,6 +5,7 @@ import {
 import pageHtml from './index.html?raw';
 import {
   CELL_CLASS_NAME, CONNECTION_ERROR_MESSAGE, GAME_ROUTE, SELECTORS, TAB_INDEX,
+  WINNING_CELL_CLASS_NAME,
 } from './constants.js';
 import { getPlayRoute } from './api.js';
 import { getColumnLabel, getMoveRefusal, getStatusText } from './texts.js';
@@ -17,6 +18,7 @@ const NEW_GAME = {
   winner: 'no winner',
   state: 'playing',
   board: [[0, 0, 0], [0, 0, 0]],
+  winningCells: [],
 };
 
 /** The same game once red played in the first column: yellow plays next. */
@@ -33,14 +35,23 @@ const GAME_WITH_FULL_COLUMN = {
   board: [[0, 'yellow', 0], [0, 'red', 0]],
 };
 
-/** A game that red won: no column can be played. */
+/** A game that red won with its tokens of the first column: no column can be played. */
 const WON_GAME = {
   ...NEW_GAME,
   lastPlayerWhoPlayed: 'red',
   winner: 'red',
   state: 'won',
   board: [['red', 'yellow', 0], ['red', 'yellow', 0]],
+  winningCells: [{ row: 0, column: 0 }, { row: 1, column: 0 }],
 };
+
+/** The class names of the cells of `WON_GAME`, top row first. */
+const WON_BOARD_CLASS_NAMES = [
+  `${CELL_CLASS_NAME} red-token ${WINNING_CELL_CLASS_NAME}`, `${CELL_CLASS_NAME} yellow-token`,
+  CELL_CLASS_NAME,
+  `${CELL_CLASS_NAME} red-token ${WINNING_CELL_CLASS_NAME}`, `${CELL_CLASS_NAME} yellow-token`,
+  CELL_CLASS_NAME,
+];
 
 /** The indexes of the columns of the games of these tests. */
 const COLUMN_INDEXES = NEW_GAME.board[0].map((cell, columnIndex) => columnIndex);
@@ -262,6 +273,35 @@ describe('playing a move', () => {
     expect(fetchGame).toHaveBeenCalledOnce();
     expect(getText(SELECTORS.message))
       .toBe(getMoveRefusal({ game: GAME_WITH_FULL_COLUMN, columnIndex: 1 }));
+  });
+});
+
+describe('showing the winning cells', () => {
+  it('marks the cells of the line that won and names them in the status', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    fetchGame.mockResolvedValueOnce(gameResponse(WON_GAME));
+
+    getPickers()[1].click();
+    await settle();
+
+    expect(getCellClassNames()).toEqual(WON_BOARD_CLASS_NAMES);
+    expect(getText(SELECTORS.status)).toBe(getStatusText(WON_GAME));
+    expect(getText(SELECTORS.status)).toContain('ligne 1 colonne 1 et ligne 2 colonne 1');
+  });
+
+  it('marks no cell when the winning cells are no cells of the board', async () => {
+    await loadPageWithGame({
+      ...WON_GAME, winningCells: [null, { row: '0', column: 0 }, { row: 2, column: 0 }],
+    });
+
+    expect(document.querySelectorAll(`.${WINNING_CELL_CLASS_NAME}`)).toHaveLength(0);
+    expect(getText(SELECTORS.status)).toBe('Rouge a gagné.');
+  });
+
+  it('marks no cell while nobody won', async () => {
+    await loadPageWithGame({ ...GAME_AFTER_RED_MOVE, winningCells: undefined });
+
+    expect(document.querySelectorAll(`.${WINNING_CELL_CLASS_NAME}`)).toHaveLength(0);
   });
 });
 

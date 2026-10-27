@@ -28,6 +28,9 @@ The page can also be played on a phone, with the keyboard alone and with a scree
 - Screen readers announce each column and each cell of the board, such as "Ligne 3, colonne 2 :
   rouge", and read whose turn it is and the messages as they change.
 - A dot marks the red tokens and a ring the yellow ones, so they are told apart without color.
+- After a win, a white ring around the tokens shows the line that won, and the status names its
+  cells, such as "Rouge a gagné : ligne 3 colonne 1, ligne 4 colonne 1, ligne 5 colonne 1 et
+  ligne 6 colonne 1."
 
 ## Stack
 
@@ -93,8 +96,9 @@ The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), d
   this host alone. The JSON answers of the Worker do not get these headers: the Express app sends
   them only `X-Content-Type-Options` and `Strict-Transport-Security`.
 - The page loads `public/main.js` as an ES module, which draws the game. It calls the API through
-  `public/api.js`, imports its rules from `public/utils.js`, and writes its texts with
-  `public/texts.js` from the copy of `public/constants.js`.
+  `public/api.js`, imports its rules from `public/utils.js` and the winning cells from
+  `public/winning-cells.js`, and writes its texts with `public/texts.js` from the copy of
+  `public/constants.js`.
 - `index.js` runs the Express app of `routes/` on the Worker, with the `nodejs_compat` flag.
 - Each game lives in its own [Durable Object](https://developers.cloudflare.com/durable-objects/)
   (`worker/Game.js`), which saves its moves and plays them again in the engine of `app/` when it

@@ -56,6 +56,9 @@ export const COLUMN_PICKER_CLASS_NAME = 'column-button';
 /** The class name of the placeholder token drawn in the button of a column. */
 export const PICKER_TOKEN_CLASS_NAME = 'token';
 
+/** The class name of a cell of the board whose token belongs to the line that won. */
+export const WINNING_CELL_CLASS_NAME = 'winning-cell';
+
 /** The class name of a text that screen readers read and that the page does not show. */
 export const VISUALLY_HIDDEN_CLASS_NAME = 'visually-hidden';
 
@@ -67,6 +70,18 @@ export const TURN_TEXT = 'Au tour de {color}.';
 
 /** The text that says who won: `{color}` is the capitalized name of the winner's color. */
 export const WIN_TEXT = '{color} a gagné.';
+
+/**
+ * The text that says who won and with which tokens: `{color}` is the capitalized name of the
+ * winner's color, and `{cells}` the list of the cells of `WINNING_CELL_NAME`.
+ */
+export const WIN_WITH_CELLS_TEXT = '{color} a gagné : {cells}.';
+
+/** The name of a winning cell in `WIN_WITH_CELLS_TEXT`: `{row}` and `{column}` count from 1. */
+export const WINNING_CELL_NAME = 'ligne {row} colonne {column}';
+
+/** The language of the page, which joins the lists of its texts, such as `a, b et c`. */
+export const PAGE_LOCALE = 'fr';
 
 /** The name of a column of the control panel: `{number}` counts the columns from 1. */
 export const COLUMN_LABEL = 'Colonne {number}';

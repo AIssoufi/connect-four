@@ -1,13 +1,18 @@
 import {
   CELL_LABEL, COLUMN_LABEL, DRAW_TEXT, EMPTY_CELL_NAME, FULL_COLUMN_LABEL, FULL_COLUMN_MESSAGE,
-  GAME_OVER_MESSAGE, GAME_STATES, TURN_TEXT, WIN_TEXT,
+  GAME_OVER_MESSAGE, GAME_STATES, PAGE_LOCALE, TURN_TEXT, WIN_TEXT, WIN_WITH_CELLS_TEXT,
+  WINNING_CELL_NAME,
 } from './constants.js';
 import {
   getNextPlayer, getPlayerColorName, getPositionNumber, isColumnFull, isGameOver,
 } from './utils.js';
+import { getWinningCells } from './winning-cells.js';
 
 /** Matches a placeholder of a text template, such as `{color}`, and captures its name. */
 const PLACEHOLDER_PATTERN = /\{(\w+)\}/g;
+
+/** Joins the items of a list as the page language writes them, such as `a, b et c`. */
+const LIST_FORMAT = new Intl.ListFormat(PAGE_LOCALE, { style: 'long', type: 'conjunction' });
 
 /**
  * Writes a text from its template, so that the page copy stays in `constants.js`.
@@ -36,11 +41,39 @@ export const fillText = ({ template, values }) => template.replace(
 const capitalize = (colorName) => `${colorName[0].toUpperCase()}${colorName.slice(1)}`;
 
 /**
+ * Writes who won a game, and with which tokens when the game gives them.
+ * @param {object} params
+ * @param {string} params.colorName - The name of the winner's color, such as `rouge`.
+ * @param {Array<{ row: number, column: number }>} params.winningCells - The cells that won, top
+ *   row first, from `getWinningCells`.
+ * @returns {string} The text, with the rows and the columns numbered from 1, or the text without
+ *   cells when the list is empty.
+ * @example getWinText({ colorName: 'rouge', winningCells }) // with the first column, rows 2 to 5
+ *   // 'Rouge a gagné : ligne 3 colonne 1, ligne 4 colonne 1, ligne 5 colonne 1 et ligne 6
+ *   // colonne 1.'
+ */
+const getWinText = ({ colorName, winningCells }) => {
+  const color = capitalize(colorName);
+  if (winningCells.length === 0) {
+    return fillText({ template: WIN_TEXT, values: { color } });
+  }
+
+  const cellNames = winningCells.map(({ row, column }) => fillText({
+    template: WINNING_CELL_NAME,
+    values: { row: getPositionNumber(row), column: getPositionNumber(column) },
+  }));
+  return fillText({
+    template: WIN_WITH_CELLS_TEXT,
+    values: { color, cells: LIST_FORMAT.format(cellNames) },
+  });
+};
+
+/**
  * Writes the state of a game: whose turn it is, who won, or a draw.
- * @param {object} game - The game status, with its `state`, `players`, `lastPlayerWhoPlayed`
- *   and `winner`.
+ * @param {object} game - The game status, with its `state`, `players`, `lastPlayerWhoPlayed`,
+ *   `winner` and `winningCells`.
  * @returns {string} The text to show, empty for a game the page cannot describe.
- * @example getStatusText({ state: 'won', winner: 'red' }) // 'Rouge a gagné.'
+ * @example getStatusText({ state: 'won', winner: 'red', winningCells: [] }) // 'Rouge a gagné.'
  */
 export const getStatusText = (game) => {
   switch (game?.state) {
@@ -50,9 +83,7 @@ export const getStatusText = (game) => {
     }
     case GAME_STATES.won: {
       const colorName = getPlayerColorName(game.winner);
-      return colorName
-        ? fillText({ template: WIN_TEXT, values: { color: capitalize(colorName) } })
-        : '';
+      return colorName ? getWinText({ colorName, winningCells: getWinningCells(game) }) : '';
     }
     case GAME_STATES.draw:
       return DRAW_TEXT;
