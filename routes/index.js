@@ -1,7 +1,7 @@
 // Dependencies
 const express = require('express');
 const { ERROR_CODES } = require('../app/constants');
-const { parseMove, isStartAllowed } = require('./utils');
+const { parseMove, isStartAllowed, isParamDecodingError } = require('./utils');
 const {
   OK_STATUS,
   CREATED_STATUS,
@@ -60,7 +60,8 @@ const answerOtherMethods = (methods) => {
 
 /**
  * Builds the router of the `/game` routes, which start, read and play games by their id. Each
- * path answers a method it does not serve with 405 and its methods in `Allow`.
+ * path answers a method it does not serve with 405 and its methods in `Allow`, and a game id
+ * whose percent-encoding cannot be decoded with 404, as an id that no game has.
  * `public/api/v1/openapi.yaml` documents these routes: keep both in step.
  * @param {object} params
  * @param {import('../worker/createGameStore').GameStore} params.games - The games to serve.
@@ -129,6 +130,19 @@ const createGameRouter = ({ games, startLimiter }) => {
 
     res.status(OK_STATUS).json({ id: gameId, ...result.status });
   }).all(answerOtherMethods(WRITE_METHODS));
+
+  // A game id that cannot be decoded names no game: answer as for an unknown id, not with a 500.
+  router.use((error, req, res, next) => {
+    if (!isParamDecodingError(error)) {
+      next(error);
+      return;
+    }
+
+    res.status(NOT_FOUND_STATUS).json({
+      code: ERROR_CODES.GAME_NOT_FOUND,
+      message: GAME_NOT_FOUND_MESSAGE,
+    });
+  });
 
   return router;
 };

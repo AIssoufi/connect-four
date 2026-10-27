@@ -312,4 +312,65 @@ describe('createApp', () => {
     expect(text).not.toContain('Secret details');
     expect(consoleError).toHaveBeenCalledWith(unexpectedError);
   });
+
+  describe('with a game id whose percent-encoding cannot be decoded', () => {
+    const GAME_NOT_FOUND_BODY = { code: 'game_not_found', message: 'No game has this id.' };
+
+    /**
+     * Sends a request to a route of a game.
+     * @param {object} params
+     * @param {string} params.method - `GET` for the status route, `POST` for the play route.
+     * @param {string} params.gameId - The game id, written as is in the path.
+     * @returns {Promise<Response>} The answer of the app.
+     */
+    const requestGame = ({ method, gameId }) => (method === 'GET'
+      ? fetch(`${server.baseUrl}/game/${gameId}/status`)
+      : postMove({ gameId, body: MOVE_BODY }));
+
+    it.each([
+      ['GET', '%E0'],
+      ['GET', '%'],
+      ['GET', '%G0'],
+      ['POST', '%E0'],
+      ['POST', '%'],
+      ['POST', '%G0'],
+    ])('answers %s with 404 game_not_found for %s, without logging a server error', async (
+      method,
+      gameId,
+    ) => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await startServer();
+
+      const response = await requestGame({ method, gameId });
+
+      expect(response.status).toBe(NOT_FOUND_STATUS);
+      expect(await response.json()).toEqual(GAME_NOT_FOUND_BODY);
+      expect(consoleError).not.toHaveBeenCalled();
+    });
+
+    it.each(['GET', 'POST'])('still answers %s for a valid encoding (%20) as for an unknown id', async (
+      method,
+    ) => {
+      await startServer();
+
+      const response = await requestGame({ method, gameId: '%20' });
+
+      expect(response.status).toBe(NOT_FOUND_STATUS);
+      expect(await response.json()).toEqual(GAME_NOT_FOUND_BODY);
+    });
+
+    it('still answers 500 to a URIError that a route throws, and logs it', async () => {
+      const routeError = new URIError('URI malformed');
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+      await startServer({
+        create: async () => { throw routeError; },
+      });
+
+      const response = await fetch(`${server.baseUrl}/game`, { method: 'POST' });
+
+      expect(response.status).toBe(SERVER_ERROR_STATUS);
+      expect(await response.json()).toEqual({ message: 'Server error.' });
+      expect(consoleError).toHaveBeenCalledWith(routeError);
+    });
+  });
 });
