@@ -179,7 +179,7 @@ export const ERROR_MESSAGES_BY_CODE = {
   too_many_starts: TOO_MANY_STARTS_MESSAGE,
 };
 
-/** The HTTP statuses of the API that the page explains, from `routes/constants.js`. */
+/** The HTTP statuses of the API that the page explains, from `routes/constants/http.js`. */
 export const HTTP_STATUSES = {
   badRequest: 400,
   notFound: 404,

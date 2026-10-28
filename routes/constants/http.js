@@ -1,0 +1,84 @@
+const { ERROR_CODES } = require('../../app/constants');
+
+/** HTTP status of an accepted request. */
+const OK_STATUS = 200;
+
+/** HTTP status of a request that created a game. */
+const CREATED_STATUS = 201;
+
+/** HTTP status of an answer without a body, such as the one to `OPTIONS`. */
+const NO_CONTENT_STATUS = 204;
+
+/** HTTP status of a request refused because of its body or a rule of the game. */
+const BAD_REQUEST_STATUS = 400;
+
+/** HTTP status of a request for a game or a route that does not exist. */
+const NOT_FOUND_STATUS = 404;
+
+/** HTTP status of a request for a known path with a method that the path does not serve. */
+const METHOD_NOT_ALLOWED_STATUS = 405;
+
+/** HTTP status of a request refused because of the type or the encoding of its body. */
+const UNSUPPORTED_MEDIA_TYPE_STATUS = 415;
+
+/** HTTP status of a request refused because its sender made too many of them. */
+const TOO_MANY_REQUESTS_STATUS = 429;
+
+/** HTTP status of a request that failed because of the server. */
+const SERVER_ERROR_STATUS = 500;
+
+/** Highest HTTP status of a client error, as opposed to a server error. */
+const LAST_CLIENT_ERROR_STATUS = 499;
+
+/** Message of a request for a game id that no game has. */
+const GAME_NOT_FOUND_MESSAGE = 'No game has this id.';
+
+/** Message of a game start refused because its sender started too many games. */
+const TOO_MANY_STARTS_MESSAGE = 'Too many games started from this address: try again later.';
+
+/** Message of a request for a path that the API does not serve. */
+const ROUTE_NOT_FOUND_MESSAGE = 'This route does not exist.';
+
+/** Message of a request for a known path with a method that the path does not serve. */
+const METHOD_NOT_ALLOWED_MESSAGE = 'This route does not accept this method: see the Allow header.';
+
+/** Message of a move whose body is sent with a `Content-Type` other than JSON. */
+const UNSUPPORTED_MEDIA_TYPE_MESSAGE = 'The body must be sent with Content-Type: application/json.';
+
+/** Message of a request that failed because of the server: the details stay in the logs. */
+const SERVER_ERROR_MESSAGE = 'Server error.';
+
+/**
+ * Codes of the refusals of a body by `express.json()`, by the `type` that the parser gives its
+ * error. Any other exposed client error gets `ERROR_CODES.INVALID_REQUEST`.
+ */
+const BODY_PARSER_ERROR_CODES = new Map([
+  ['entity.parse.failed', ERROR_CODES.INVALID_JSON],
+  ['entity.too.large', ERROR_CODES.BODY_TOO_LARGE],
+  ['encoding.unsupported', ERROR_CODES.UNSUPPORTED_ENCODING],
+  ['charset.unsupported', ERROR_CODES.UNSUPPORTED_CHARSET],
+]);
+
+/** The only type of body that the API reads, with or without a `charset` parameter. */
+const JSON_MEDIA_TYPE = 'application/json';
+
+module.exports = {
+  OK_STATUS,
+  CREATED_STATUS,
+  NO_CONTENT_STATUS,
+  BAD_REQUEST_STATUS,
+  NOT_FOUND_STATUS,
+  METHOD_NOT_ALLOWED_STATUS,
+  UNSUPPORTED_MEDIA_TYPE_STATUS,
+  TOO_MANY_REQUESTS_STATUS,
+  SERVER_ERROR_STATUS,
+  LAST_CLIENT_ERROR_STATUS,
+  GAME_NOT_FOUND_MESSAGE,
+  TOO_MANY_STARTS_MESSAGE,
+  ROUTE_NOT_FOUND_MESSAGE,
+  METHOD_NOT_ALLOWED_MESSAGE,
+  UNSUPPORTED_MEDIA_TYPE_MESSAGE,
+  SERVER_ERROR_MESSAGE,
+  BODY_PARSER_ERROR_CODES,
+  JSON_MEDIA_TYPE,
+};

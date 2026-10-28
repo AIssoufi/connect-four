@@ -8,6 +8,8 @@ const {
   SERVER_ERROR_STATUS,
   ROUTE_NOT_FOUND_MESSAGE,
   SERVER_ERROR_MESSAGE,
+} = require('./constants/http');
+const {
   CONTENT_TYPE_OPTIONS_HEADER,
   NO_SNIFF,
   STRICT_TRANSPORT_SECURITY_HEADER,
@@ -15,15 +17,17 @@ const {
   CONTENT_SECURITY_POLICY_HEADER,
   SAME_ORIGIN_ONLY_POLICY,
   ACCEPT_HEADER,
-  NOT_FOUND_FORMATS,
-  HTML_FORMAT,
   REFERRER_POLICY_HEADER,
   ORIGIN_ONLY_ACROSS_SITES,
   PERMISSIONS_POLICY_HEADER,
   NO_UNUSED_FEATURES,
   CROSS_ORIGIN_OPENER_POLICY_HEADER,
   SAME_ORIGIN_OPENER,
-} = require('./constants');
+} = require('./constants/headers');
+const {
+  NOT_FOUND_FORMATS,
+  HTML_FORMAT,
+} = require('./constants/notFoundFormats');
 const NOT_FOUND_PAGE = require('./notFoundPage');
 
 /**
