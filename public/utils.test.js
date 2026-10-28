@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   getBoardKey, getCellClassName, getColumnTabIndex, getNextColumnIndex, getNextPlayer,
-  getPlayerColorName, getPositionNumber, isBoardSize, isColumnFull, isDrawableBoard, isGameOver,
-  isGameStatus,
+  getPlayerColorName, getPositionNumber, hasOwnKey, isBoardSize, isColumnFull, isDrawableBoard,
+  isGameOver, isGameStatus,
 } from './utils.js';
 
 const PLAYERS = ['red', 'yellow'];
@@ -21,6 +21,31 @@ const GAME = {
   state: 'playing',
   board: BOARD,
 };
+
+describe('hasOwnKey', () => {
+  const table = { red: 'rouge', empty: undefined };
+
+  it('finds an own key, even with an undefined value', () => {
+    expect(hasOwnKey({ table, key: 'red' })).toBe(true);
+    expect(hasOwnKey({ table, key: 'empty' })).toBe(true);
+  });
+
+  it('finds an own number key from its number', () => {
+    expect(hasOwnKey({ table: { 400: 'Refusé.' }, key: 400 })).toBe(true);
+  });
+
+  it.each(['yellow', '', 'toString', '__proto__', 'constructor', undefined, null, 0])(
+    'finds no own key %o',
+    (key) => {
+      expect(hasOwnKey({ table, key })).toBe(false);
+    },
+  );
+
+  it.each([undefined, null])('finds no key in the missing table %o', (missingTable) => {
+    expect(hasOwnKey({ table: missingTable, key: 'toString' })).toBe(false);
+    expect(hasOwnKey({ table: missingTable, key: 'red' })).toBe(false);
+  });
+});
 
 describe('getPlayerColorName', () => {
   it('names the color of each player', () => {

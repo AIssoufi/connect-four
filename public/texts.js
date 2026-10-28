@@ -4,7 +4,7 @@ import {
   WINNING_CELL_LABEL, WINNING_CELL_NAME,
 } from './constants.js';
 import {
-  getNextPlayer, getPlayerColorName, getPositionNumber, isColumnFull, isGameOver,
+  getNextPlayer, getPlayerColorName, getPositionNumber, hasOwnKey, isColumnFull, isGameOver,
 } from './utils.js';
 import { getWinningCells } from './winning-cells.js';
 
@@ -26,10 +26,8 @@ const LIST_FORMAT = new Intl.ListFormat(PAGE_LOCALE, { style: 'long', type: 'con
 export const fillText = ({ template, values }) => template.replace(
   PLACEHOLDER_PATTERN,
   (placeholder, name) => {
-    const knownValues = values ?? {};
-    const hasValue = Object.prototype.hasOwnProperty.call(knownValues, name)
-      && knownValues[name] !== undefined;
-    return hasValue ? String(knownValues[name]) : placeholder;
+    const hasValue = hasOwnKey({ table: values, key: name }) && values[name] !== undefined;
+    return hasValue ? String(values[name]) : placeholder;
   },
 );
 
