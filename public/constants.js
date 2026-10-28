@@ -171,6 +171,7 @@ export const ERROR_MESSAGES_BY_CODE = {
   body_too_large: BODY_TOO_LARGE_MESSAGE,
   unsupported_encoding: UNSUPPORTED_FORMAT_MESSAGE,
   unsupported_charset: UNSUPPORTED_FORMAT_MESSAGE,
+  unsupported_media_type: UNSUPPORTED_FORMAT_MESSAGE,
   invalid_request: INVALID_REQUEST_MESSAGE,
   game_not_found: GAME_NOT_FOUND_MESSAGE,
   route_not_found: UNKNOWN_ROUTE_MESSAGE,

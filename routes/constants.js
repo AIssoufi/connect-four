@@ -18,6 +18,9 @@ const NOT_FOUND_STATUS = 404;
 /** HTTP status of a request for a known path with a method that the path does not serve. */
 const METHOD_NOT_ALLOWED_STATUS = 405;
 
+/** HTTP status of a request refused because of the type or the encoding of its body. */
+const UNSUPPORTED_MEDIA_TYPE_STATUS = 415;
+
 /** HTTP status of a request refused because its sender made too many of them. */
 const TOO_MANY_REQUESTS_STATUS = 429;
 
@@ -39,6 +42,9 @@ const ROUTE_NOT_FOUND_MESSAGE = 'This route does not exist.';
 /** Message of a request for a known path with a method that the path does not serve. */
 const METHOD_NOT_ALLOWED_MESSAGE = 'This route does not accept this method: see the Allow header.';
 
+/** Message of a move whose body is sent with a `Content-Type` other than JSON. */
+const UNSUPPORTED_MEDIA_TYPE_MESSAGE = 'The body must be sent with Content-Type: application/json.';
+
 /** Message of a request that failed because of the server: the details stay in the logs. */
 const SERVER_ERROR_MESSAGE = 'Server error.';
 
@@ -52,6 +58,12 @@ const BODY_PARSER_ERROR_CODES = new Map([
   ['encoding.unsupported', ERROR_CODES.UNSUPPORTED_ENCODING],
   ['charset.unsupported', ERROR_CODES.UNSUPPORTED_CHARSET],
 ]);
+
+/** The only type of body that the API reads, with or without a `charset` parameter. */
+const JSON_MEDIA_TYPE = 'application/json';
+
+/** Header that gives the length of the body of a request, in bytes. */
+const CONTENT_LENGTH_HEADER = 'Content-Length';
 
 /** Header in which Cloudflare gives the IP address of the visitor. */
 const CLIENT_IP_HEADER = 'CF-Connecting-IP';
@@ -165,6 +177,7 @@ module.exports = {
   BAD_REQUEST_STATUS,
   NOT_FOUND_STATUS,
   METHOD_NOT_ALLOWED_STATUS,
+  UNSUPPORTED_MEDIA_TYPE_STATUS,
   TOO_MANY_REQUESTS_STATUS,
   SERVER_ERROR_STATUS,
   LAST_CLIENT_ERROR_STATUS,
@@ -172,8 +185,11 @@ module.exports = {
   TOO_MANY_STARTS_MESSAGE,
   ROUTE_NOT_FOUND_MESSAGE,
   METHOD_NOT_ALLOWED_MESSAGE,
+  UNSUPPORTED_MEDIA_TYPE_MESSAGE,
   SERVER_ERROR_MESSAGE,
   BODY_PARSER_ERROR_CODES,
+  JSON_MEDIA_TYPE,
+  CONTENT_LENGTH_HEADER,
   CLIENT_IP_HEADER,
   ALLOW_HEADER,
   IPV4_PATTERN,

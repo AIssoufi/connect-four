@@ -49,6 +49,7 @@ describe('ERROR_MESSAGES_BY_CODE', () => {
       body_too_large: 'Requête trop volumineuse pour le serveur : rechargez la page.',
       unsupported_encoding: 'Format de requête refusé par le serveur : rechargez la page.',
       unsupported_charset: 'Format de requête refusé par le serveur : rechargez la page.',
+      unsupported_media_type: 'Format de requête refusé par le serveur : rechargez la page.',
       invalid_request: 'Requête illisible pour le serveur : rechargez la page.',
       game_not_found: 'Cette partie n’existe plus : lancez une nouvelle partie.',
       route_not_found: 'Adresse inconnue du serveur : rechargez la page.',
