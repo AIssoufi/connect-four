@@ -231,8 +231,8 @@ The audit fails the run on any advisory at or above moderate:
   "Enable workflow" in the Actions tab.
 
 Each job sets pnpm up with `pnpm/action-setup`, which reads the `packageManager` field. It is
-pinned to the commit of v6.1.0, the first release that starts from pnpm 12 instead of 11, since
-its `v6` tag still points to v6.0.10.
+pinned to a commit rather than its `v6` tag, which lagged behind v6.1.0, the first release that
+starts from pnpm 12 instead of 11.
 
 `.github/workflows/commit-messages.yml` checks the commit messages of every pull request, and
 its title unless a bot opened it, with commitlint (see [Commit messages](#commit-messages)).
