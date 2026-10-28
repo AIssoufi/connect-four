@@ -4,6 +4,20 @@ import {
 } from './constants.js';
 
 /**
+ * Tells whether a table has its own entry for a key, so that an inherited key such as
+ * `toString` or `__proto__` never reads as an entry.
+ * @param {object} params
+ * @param {object|null} [params.table] - The table, by key. A missing table has no entry.
+ * @param {unknown} params.key - The key, often from the response of the API.
+ * @returns {boolean} `true` when the table has its own entry for the key.
+ * @example hasOwnKey({ table: { red: 'rouge' }, key: 'toString' }) // false
+ */
+export const hasOwnKey = ({ table, key }) => Object.prototype.hasOwnProperty.call(
+  table ?? {},
+  key,
+);
+
+/**
  * Names the color of a player.
  * @param {string} player - The id of a player, such as `red`.
  * @returns {string|null} The name of the player's color, or `null` for any value that is no
@@ -11,7 +25,7 @@ import {
  * @example getPlayerColorName('yellow') // 'jaune'
  */
 export const getPlayerColorName = (player) => {
-  const isKnownPlayer = Object.prototype.hasOwnProperty.call(PLAYER_COLOR_NAMES, player);
+  const isKnownPlayer = hasOwnKey({ table: PLAYER_COLOR_NAMES, key: player });
   return isKnownPlayer ? PLAYER_COLOR_NAMES[player] : null;
 };
 

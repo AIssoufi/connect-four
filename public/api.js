@@ -2,16 +2,7 @@ import {
   CONNECTION_ERROR_MESSAGE, ERROR_MESSAGES_BY_CODE, ERROR_MESSAGES_BY_STATUS, GAME_ROUTE,
   SERVER_ERROR_MESSAGE,
 } from './constants.js';
-import { isGameStatus } from './utils.js';
-
-/**
- * Tells whether a table of messages has its own entry for a key, which `toString` is not.
- * @param {object} params
- * @param {object} params.messages - The messages, by key.
- * @param {unknown} params.key - The key, from the response of the API.
- * @returns {boolean} `true` when the table explains the key.
- */
-const hasMessage = ({ messages, key }) => Object.prototype.hasOwnProperty.call(messages, key);
+import { hasOwnKey, isGameStatus } from './utils.js';
 
 /**
  * Reads the error code of the body of an error response.
@@ -23,7 +14,7 @@ const hasMessage = ({ messages, key }) => Object.prototype.hasOwnProperty.call(m
 export const getErrorCode = (body) => {
   const code = body?.code;
   const isKnownCode = typeof code === 'string'
-    && hasMessage({ messages: ERROR_MESSAGES_BY_CODE, key: code });
+    && hasOwnKey({ table: ERROR_MESSAGES_BY_CODE, key: code });
   return isKnownCode ? code : null;
 };
 
@@ -44,7 +35,7 @@ export const getErrorMessage = ({ status, body }) => {
     return ERROR_MESSAGES_BY_CODE[code];
   }
 
-  const isExplainedStatus = hasMessage({ messages: ERROR_MESSAGES_BY_STATUS, key: status });
+  const isExplainedStatus = hasOwnKey({ table: ERROR_MESSAGES_BY_STATUS, key: status });
   return isExplainedStatus ? ERROR_MESSAGES_BY_STATUS[status] : SERVER_ERROR_MESSAGE;
 };
 
