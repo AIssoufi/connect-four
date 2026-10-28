@@ -96,8 +96,11 @@ The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), d
 - `public/_headers` adds security headers to these files. Its Content-Security-Policy only allows
   the site itself and forbids other sites to frame the pages, and `/api/v1/` has its own to load
   Swagger UI from jsDelivr. Its Strict-Transport-Security keeps browsers on HTTPS for a year, for
-  this host alone. The answers of the Worker do not get these headers: the Express app sends
-  them only `X-Content-Type-Options` and `Strict-Transport-Security`, and its HTML `404` page
+  this host alone. Its Permissions-Policy turns off the camera, the microphone, the geolocation,
+  payments and USB, and its Cross-Origin-Opener-Policy `same-origin` keeps the pages apart from
+  the windows of other sites. The answers of the Worker do not get these headers: the Express app
+  sends them only `X-Content-Type-Options`, `Strict-Transport-Security`, `Permissions-Policy` and
+  `Cross-Origin-Opener-Policy`, and its HTML `404` page
   (`routes/notFoundPage.js`, styled by `public/not-found.css`) the same Content-Security-Policy
   and Referrer-Policy as the files.
 - The page loads `public/main.js` as an ES module, which runs the game. It draws the board and the

@@ -19,6 +19,10 @@ const {
   HTML_FORMAT,
   REFERRER_POLICY_HEADER,
   ORIGIN_ONLY_ACROSS_SITES,
+  PERMISSIONS_POLICY_HEADER,
+  NO_UNUSED_FEATURES,
+  CROSS_ORIGIN_OPENER_POLICY_HEADER,
+  SAME_ORIGIN_OPENER,
 } = require('./constants');
 const NOT_FOUND_PAGE = require('./notFoundPage');
 
@@ -26,7 +30,8 @@ const NOT_FOUND_PAGE = require('./notFoundPage');
  * Builds the Express app of the API: the `/game` routes, a 404 for any other path (an HTML page
  * when `Accept` prefers it, as a browser does, JSON otherwise), and an error handler that answers
  * JSON without the stack trace. Every answer sends
- * `X-Content-Type-Options: nosniff` and `Strict-Transport-Security: max-age=31536000`. The Worker
+ * `X-Content-Type-Options: nosniff`, `Strict-Transport-Security: max-age=31536000`,
+ * `Permissions-Policy` and `Cross-Origin-Opener-Policy: same-origin`. The Worker
  * serves the files of `public/` before any request reaches this app.
  * @param {object} params
  * @param {import('../worker/createGameStore').GameStore} params.games - The games to serve.
@@ -42,6 +47,8 @@ const createApp = ({ games, startLimiter }) => {
   app.use((req, res, next) => {
     res.set(CONTENT_TYPE_OPTIONS_HEADER, NO_SNIFF);
     res.set(STRICT_TRANSPORT_SECURITY_HEADER, HTTPS_ONLY_FOR_A_YEAR);
+    res.set(PERMISSIONS_POLICY_HEADER, NO_UNUSED_FEATURES);
+    res.set(CROSS_ORIGIN_OPENER_POLICY_HEADER, SAME_ORIGIN_OPENER);
     next();
   });
 
