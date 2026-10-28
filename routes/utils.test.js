@@ -2,7 +2,12 @@ import {
   describe, it, expect, vi,
 } from 'vitest';
 import {
-  parseMove, isExposedClientError, isParamDecodingError, getClientErrorCode, isStartAllowed,
+  parseMove,
+  hasNonJsonBody,
+  isExposedClientError,
+  isParamDecodingError,
+  getClientErrorCode,
+  isStartAllowed,
 } from './utils';
 
 const BODY_ERROR = {
@@ -61,6 +66,37 @@ describe('parseMove', () => {
     ['a boolean', true],
   ])('refuses %s', (_case, column) => {
     expect(parseMove({ playerId: 'red', column })).toEqual(COLUMN_ERROR);
+  });
+});
+
+describe('hasNonJsonBody', () => {
+  /**
+   * Builds a stand-in for an Express request, as `hasNonJsonBody()` reads it.
+   * @param {object} params
+   * @param {string | false | null} params.typeMatch - What `req.is()` gives: the matched type,
+   *   `false` for a body of another type or without one, `null` without a body.
+   * @param {string} [params.contentLength] - The `Content-Length` header, none by default.
+   * @returns {{ is: () => string | false | null, get: () => string | undefined }} The request.
+   */
+  const fakeRequest = ({ typeMatch, contentLength }) => ({
+    is: (type) => (type === 'application/json' ? typeMatch : false),
+    get: (name) => (name === 'Content-Length' ? contentLength : undefined),
+  });
+
+  it.each([
+    ['a body of another type', { typeMatch: false, contentLength: '29' }],
+    ['a chunked body of another type, without a length', { typeMatch: false }],
+  ])('is true for %s', (_case, request) => {
+    expect(hasNonJsonBody(fakeRequest(request))).toBe(true);
+  });
+
+  it.each([
+    ['a JSON body', { typeMatch: 'application/json', contentLength: '29' }],
+    ['a request without a body', { typeMatch: null }],
+    ['an empty body of another type', { typeMatch: false, contentLength: '0' }],
+    ['an empty JSON body', { typeMatch: 'application/json', contentLength: '0' }],
+  ])('is false for %s', (_case, request) => {
+    expect(hasNonJsonBody(fakeRequest(request))).toBe(false);
   });
 });
 

@@ -1,7 +1,9 @@
 // Dependencies
 const express = require('express');
 const { ERROR_CODES } = require('../app/constants');
-const { parseMove, isStartAllowed, isParamDecodingError } = require('./utils');
+const {
+  parseMove, hasNonJsonBody, isStartAllowed, isParamDecodingError,
+} = require('./utils');
 const {
   OK_STATUS,
   CREATED_STATUS,
@@ -9,10 +11,13 @@ const {
   BAD_REQUEST_STATUS,
   NOT_FOUND_STATUS,
   METHOD_NOT_ALLOWED_STATUS,
+  UNSUPPORTED_MEDIA_TYPE_STATUS,
   TOO_MANY_REQUESTS_STATUS,
   GAME_NOT_FOUND_MESSAGE,
   TOO_MANY_STARTS_MESSAGE,
   METHOD_NOT_ALLOWED_MESSAGE,
+  UNSUPPORTED_MEDIA_TYPE_MESSAGE,
+  JSON_MEDIA_TYPE,
   CLIENT_IP_HEADER,
   ALLOW_HEADER,
 } = require('./constants');
@@ -21,7 +26,24 @@ const {
  * Parses the JSON body of a move. A move is a few bytes, so the parser reads plain bodies only:
  * a compressed one (a `Content-Encoding` other than `identity`) gets 415 and is never inflated.
  */
-const parseJsonBody = express.json({ inflate: false });
+const parseJsonBody = express.json({ inflate: false, type: JSON_MEDIA_TYPE });
+
+/**
+ * Answers 415 to a move whose body comes with a type other than JSON, which `parseJsonBody`
+ * would skip: the client then learns to fix its `Content-Type` rather than its body.
+ * @type {express.RequestHandler}
+ */
+const refuseNonJsonBody = (req, res, next) => {
+  if (!hasNonJsonBody(req)) {
+    next();
+    return;
+  }
+
+  res.status(UNSUPPORTED_MEDIA_TYPE_STATUS).json({
+    code: ERROR_CODES.UNSUPPORTED_MEDIA_TYPE,
+    message: UNSUPPORTED_MEDIA_TYPE_MESSAGE,
+  });
+};
 
 /** The method that asks a path which methods it serves. */
 const OPTIONS_METHOD = 'OPTIONS';
@@ -106,7 +128,7 @@ const createGameRouter = ({ games, startLimiter }) => {
     res.status(OK_STATUS).json({ id: gameId, ...status });
   }).all(answerOtherMethods(READ_METHODS));
 
-  router.route('/:gameId/play').post(parseJsonBody, async (req, res) => {
+  router.route('/:gameId/play').post(refuseNonJsonBody, parseJsonBody, async (req, res) => {
     const move = parseMove(req.body);
     if (move.error) {
       res.status(BAD_REQUEST_STATUS).json(move.error);

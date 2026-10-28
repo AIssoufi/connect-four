@@ -9,6 +9,8 @@ const {
   BAD_REQUEST_STATUS,
   LAST_CLIENT_ERROR_STATUS,
   BODY_PARSER_ERROR_CODES,
+  JSON_MEDIA_TYPE,
+  CONTENT_LENGTH_HEADER,
 } = require('./constants');
 const { getClientNetworkKey } = require('./clientNetwork');
 
@@ -49,6 +51,23 @@ const parseMove = (body) => {
   }
 
   return { playerId, column };
+};
+
+/**
+ * Tells whether a request sends a body of a type other than JSON, which `express.json()` would
+ * skip and leave `undefined`. A request without a body, or with an empty one, sends no type to
+ * fix, so it is not one.
+ * @param {import('express').Request} req - The request, read through its `is()` and `get()`.
+ * @returns {boolean} `true` for a body with a `Content-Type` other than `application/json` (any
+ * parameter such as `charset` aside), or with none.
+ * @example
+ * hasNonJsonBody(req); // true for `Content-Type: text/plain` and the body '{"column":1}'
+ */
+const hasNonJsonBody = (req) => {
+  const isOtherType = req.is(JSON_MEDIA_TYPE) === false;
+  const isEmptyBody = Number(req.get(CONTENT_LENGTH_HEADER)) === 0;
+
+  return isOtherType && !isEmptyBody;
 };
 
 /**
@@ -124,6 +143,7 @@ const isStartAllowed = async ({ limiter, clientIp }) => {
 
 module.exports = {
   parseMove,
+  hasNonJsonBody,
   isExposedClientError,
   isParamDecodingError,
   getClientErrorCode,

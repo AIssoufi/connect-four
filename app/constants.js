@@ -64,6 +64,8 @@ const ERROR_CODES = Object.freeze({
   UNSUPPORTED_ENCODING: 'unsupported_encoding',
   /** The body of the request is in a charset other than UTF-8. */
   UNSUPPORTED_CHARSET: 'unsupported_charset',
+  /** The body of a move is sent with a `Content-Type` other than JSON. */
+  UNSUPPORTED_MEDIA_TYPE: 'unsupported_media_type',
   /** Any other refusal of the body by the parser. */
   INVALID_REQUEST: 'invalid_request',
   /** No game has the id of the request. */

@@ -176,13 +176,19 @@ paths:
                     message: request entity too large
         '415':
           description: >-
-            The body is compressed (a `Content-Encoding` other than `identity`) or its charset is
-            not UTF-8: the API reads only plain UTF-8 bodies.
+            The body is sent with a `Content-Type` other than `application/json`, or with none
+            (`unsupported_media_type`), is compressed (a `Content-Encoding` other than
+            `identity`) or its charset is not UTF-8: the API reads only plain UTF-8 JSON bodies.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ClientError'
               examples:
+                otherType:
+                  summary: A JSON move sent as text/plain
+                  value:
+                    code: unsupported_media_type
+                    message: 'The body must be sent with Content-Type: application/json.'
                 compressed:
                   summary: A gzip body
                   value:
@@ -359,6 +365,8 @@ components:
 
             - `unsupported_charset`: the charset of the body is not UTF-8.
 
+            - `unsupported_media_type`: the body of a move is not sent as `application/json`.
+
             - `invalid_request`: the API could not read the request for another reason.
 
             - `game_not_found`: no game has this id.
@@ -381,6 +389,7 @@ components:
             - body_too_large
             - unsupported_encoding
             - unsupported_charset
+            - unsupported_media_type
             - invalid_request
             - game_not_found
             - route_not_found

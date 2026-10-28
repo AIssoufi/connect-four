@@ -8,12 +8,18 @@ import { createFakeGameNamespace } from '../worker/testDoubles';
 import Engine from '../app/engine';
 import { RED_WINS_MOVES, readMoves } from '../app/testMoves';
 import {
-  OK_STATUS, CREATED_STATUS, BAD_REQUEST_STATUS, NOT_FOUND_STATUS, TOO_MANY_REQUESTS_STATUS,
+  OK_STATUS, CREATED_STATUS, BAD_REQUEST_STATUS, NOT_FOUND_STATUS, METHOD_NOT_ALLOWED_STATUS,
+  UNSUPPORTED_MEDIA_TYPE_STATUS, TOO_MANY_REQUESTS_STATUS,
 } from './constants';
 import { GAME_ID_LENGTH, GAME_ID_PATTERN } from '../worker/constants';
 
 const NEW_GAME_STATUS = new Engine().getStatus();
 const GAME_NOT_FOUND = { code: 'game_not_found', message: 'No game has this id.' };
+const UNSUPPORTED_MEDIA_TYPE = {
+  code: 'unsupported_media_type',
+  message: 'The body must be sent with Content-Type: application/json.',
+};
+const RED_MOVE = '{"playerId":"red","column":1}';
 const CLIENT_IP = '203.0.113.7';
 const OTHER_CLIENT_IP = '203.0.113.8';
 /** The starts that the counting stand-in of the limiter allows to each key. */
@@ -69,13 +75,19 @@ describe('game routes', () => {
    * Plays one move through the API.
    * @param {object} params
    * @param {string} params.gameId - The game to play.
-   * @param {string} params.body - The raw body of the request.
-   * @param {string} [params.contentType] - The type of the body, JSON by default.
+   * @param {string | Uint8Array} [params.body] - The raw body of the request, none by default.
+   * @param {string | null} [params.contentType] - The type of the body, JSON by default, and
+   *   `null` to send no `Content-Type`: fetch still gives a string body `text/plain`, so pass
+   *   a `Uint8Array` then.
    * @returns {Promise<{ status: number, body: object }>} The response.
    */
   const postMove = ({ gameId, body, contentType = 'application/json' }) => call({
     route: `/game/${gameId}/play`,
-    init: { method: 'POST', headers: { 'Content-Type': contentType }, body },
+    init: {
+      method: 'POST',
+      headers: contentType === null ? {} : { 'Content-Type': contentType },
+      body,
+    },
   });
 
   const play = ({ gameId, move }) => postMove({ gameId, body: JSON.stringify(move) });
@@ -248,8 +260,9 @@ describe('game routes', () => {
 
   it.each([
     ['an empty JSON body, which the parser reads as an empty object', { body: '' }, 'invalid_player'],
-    ['a body that is not JSON', { body: 'playerId=red&column=1', contentType: 'application/x-www-form-urlencoded' }, 'invalid_move'],
     ['a JSON array', { body: '[]' }, 'invalid_move'],
+    ['a request without a body or a Content-Type', { contentType: null }, 'invalid_move'],
+    ['an empty text/plain body, with no type to fix', { body: '', contentType: 'text/plain' }, 'invalid_move'],
     ['an empty object', { body: '{}' }, 'invalid_player'],
     ['an unknown player', { body: '{"playerId":"green","column":1}' }, 'invalid_player'],
     ['the old playerid field', { body: '{"playerid":"red","column":1}' }, 'invalid_player'],
@@ -265,6 +278,45 @@ describe('game routes', () => {
     expect(status).toBe(BAD_REQUEST_STATUS);
     expect(body).toEqual({ code, message: expect.stringMatching(/must be/) });
     expect((await getStatus(id)).body).toEqual({ id, ...NEW_GAME_STATUS });
+  });
+
+  it.each([
+    ['a JSON move sent as text/plain', { body: RED_MOVE, contentType: 'text/plain' }],
+    ['a JSON move sent without a Content-Type', { body: new TextEncoder().encode(RED_MOVE), contentType: null }],
+    ['a form body', { body: 'playerId=red&column=1', contentType: 'application/x-www-form-urlencoded' }],
+    ['a JSON move sent as another JSON type', { body: RED_MOVE, contentType: 'application/merge-patch+json' }],
+  ])('refuses %s with 415 without playing', async (_case, request) => {
+    const { id } = await startGame();
+
+    const { status, body } = await postMove({ gameId: id, ...request });
+
+    expect(status).toBe(UNSUPPORTED_MEDIA_TYPE_STATUS);
+    expect(body).toEqual(UNSUPPORTED_MEDIA_TYPE);
+    expect((await getStatus(id)).body).toEqual({ id, ...NEW_GAME_STATUS });
+  });
+
+  it.each([
+    'application/json; charset=utf-8',
+    'Application/JSON',
+  ])('plays a move sent as %s', async (contentType) => {
+    const { id } = await startGame();
+
+    const { status, body } = await postMove({ gameId: id, body: RED_MOVE, contentType });
+
+    expect(status).toBe(OK_STATUS);
+    expect(body.board).not.toEqual(NEW_GAME_STATUS.board);
+  });
+
+  it('answers a GET of the move path with 405, whatever its Content-Type', async () => {
+    const { id } = await startGame();
+
+    const { status, body } = await call({
+      route: `/game/${id}/play`,
+      init: { headers: { 'Content-Type': 'text/plain' } },
+    });
+
+    expect(status).toBe(METHOD_NOT_ALLOWED_STATUS);
+    expect(body.code).toBe('method_not_allowed');
   });
 
   it.each([
