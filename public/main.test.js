@@ -4,8 +4,8 @@ import {
 } from 'vitest';
 import pageHtml from './index.html?raw';
 import {
-  CELL_CLASS_NAME, CONNECTION_ERROR_MESSAGE, GAME_ROUTE, SELECTORS, TAB_INDEX,
-  WINNING_CELL_CLASS_NAME,
+  CELL_CLASS_NAME, CONNECTION_ERROR_MESSAGE, ERROR_MESSAGES_BY_CODE, GAME_ROUTE, SELECTORS,
+  TAB_INDEX, WINNING_CELL_CLASS_NAME,
 } from './constants.js';
 import { getPlayRoute } from './api.js';
 import { getColumnLabel, getMoveRefusal, getStatusText } from './texts.js';
@@ -279,6 +279,21 @@ describe('playing a move', () => {
     expect(fetchGame).toHaveBeenCalledOnce();
     expect(getText(SELECTORS.message))
       .toBe(getMoveRefusal({ game: GAME_WITH_FULL_COLUMN, columnIndex: 1 }));
+  });
+
+  it('shows the French text of the code of a move that the server refuses', async () => {
+    await loadPageWithGame(NEW_GAME);
+    fetchGame.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ code: 'not_your_turn', message: "red: it's not your turn!" }),
+    });
+
+    getPickers()[0].click();
+    await settle();
+
+    expect(getText(SELECTORS.message)).toBe(ERROR_MESSAGES_BY_CODE.not_your_turn);
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
   });
 });
 

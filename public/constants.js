@@ -110,7 +110,7 @@ export const DRAW_TEXT = 'Match nul : le plateau est plein.';
 /** The message shown when a player picks a column once the game is over. */
 export const GAME_OVER_MESSAGE = 'La partie est terminée : lancez une nouvelle partie.';
 
-/** The message shown when the server refuses a move for another reason. */
+/** The message shown when the server refuses a move without a code that the page knows. */
 export const MOVE_REFUSED_MESSAGE = 'Coup refusé par le serveur : rechargez la page.';
 
 /** The message shown when the game no longer exists on the server. */
@@ -125,6 +125,59 @@ export const SERVER_ERROR_MESSAGE = 'Erreur du serveur : réessayez.';
 /** The message shown when the server cannot be reached. */
 export const CONNECTION_ERROR_MESSAGE = 'Connexion au serveur impossible : réessayez.';
 
+/** The message shown when the server finds a column full that the page still shows free. */
+export const SERVER_FULL_COLUMN_MESSAGE = 'Cette colonne est pleine : rechargez la page.';
+
+/** The message shown when the server says that the other player plays next. */
+export const NOT_YOUR_TURN_MESSAGE = 'Ce n’est pas le tour de ce joueur : rechargez la page.';
+
+/** The message shown when the player of the move has no token left. */
+export const NO_TOKEN_LEFT_MESSAGE = 'Ce joueur n’a plus de jeton : lancez une nouvelle partie.';
+
+/** The message shown when the server cannot read the move that the page sent. */
+export const INVALID_MOVE_MESSAGE = 'Coup illisible pour le serveur : rechargez la page.';
+
+/** The message shown when the server knows neither of the two colors of the move. */
+export const INVALID_PLAYER_MESSAGE = 'Joueur inconnu du serveur : rechargez la page.';
+
+/** The message shown when the column of the move is not on the board. */
+export const INVALID_COLUMN_MESSAGE = 'Cette colonne n’existe pas : rechargez la page.';
+
+/** The message shown when the server cannot read the request for a reason other than its move. */
+export const INVALID_REQUEST_MESSAGE = 'Requête illisible pour le serveur : rechargez la page.';
+
+/** The message shown when the request is too large for the server. */
+export const BODY_TOO_LARGE_MESSAGE = 'Requête trop volumineuse pour le serveur : rechargez la page.';
+
+/** The message shown when the server does not accept the format of the request. */
+export const UNSUPPORTED_FORMAT_MESSAGE = 'Format de requête refusé par le serveur : rechargez la page.';
+
+/** The message shown when the page calls an address or a method that the API does not serve. */
+export const UNKNOWN_ROUTE_MESSAGE = 'Adresse inconnue du serveur : rechargez la page.';
+
+/**
+ * The message of each error code that the API sends in a `4xx` body: the `ERROR_CODES` of
+ * `app/constants.js`, which `public/api/v1/openapi.yaml` describes.
+ */
+export const ERROR_MESSAGES_BY_CODE = {
+  invalid_player: INVALID_PLAYER_MESSAGE,
+  invalid_column: INVALID_COLUMN_MESSAGE,
+  game_over: GAME_OVER_MESSAGE,
+  not_your_turn: NOT_YOUR_TURN_MESSAGE,
+  no_token_left: NO_TOKEN_LEFT_MESSAGE,
+  column_full: SERVER_FULL_COLUMN_MESSAGE,
+  invalid_move: INVALID_MOVE_MESSAGE,
+  invalid_json: INVALID_MOVE_MESSAGE,
+  body_too_large: BODY_TOO_LARGE_MESSAGE,
+  unsupported_encoding: UNSUPPORTED_FORMAT_MESSAGE,
+  unsupported_charset: UNSUPPORTED_FORMAT_MESSAGE,
+  invalid_request: INVALID_REQUEST_MESSAGE,
+  game_not_found: GAME_NOT_FOUND_MESSAGE,
+  route_not_found: UNKNOWN_ROUTE_MESSAGE,
+  method_not_allowed: UNKNOWN_ROUTE_MESSAGE,
+  too_many_starts: TOO_MANY_STARTS_MESSAGE,
+};
+
 /** The HTTP statuses of the API that the page explains, from `routes/constants.js`. */
 export const HTTP_STATUSES = {
   badRequest: 400,
@@ -132,7 +185,10 @@ export const HTTP_STATUSES = {
   tooManyRequests: 429,
 };
 
-/** The message of each HTTP status that the API answers with an error. */
+/**
+ * The message of each HTTP status that the API answers with an error, for a body without a code
+ * of `ERROR_MESSAGES_BY_CODE`.
+ */
 export const ERROR_MESSAGES_BY_STATUS = {
   [HTTP_STATUSES.badRequest]: MOVE_REFUSED_MESSAGE,
   [HTTP_STATUSES.notFound]: GAME_NOT_FOUND_MESSAGE,

@@ -1,16 +1,64 @@
 import {
-  CONNECTION_ERROR_MESSAGE, ERROR_MESSAGES_BY_STATUS, GAME_ROUTE, SERVER_ERROR_MESSAGE,
+  CONNECTION_ERROR_MESSAGE, ERROR_MESSAGES_BY_CODE, ERROR_MESSAGES_BY_STATUS, GAME_ROUTE,
+  SERVER_ERROR_MESSAGE,
 } from './constants.js';
 import { isGameStatus } from './utils.js';
 
 /**
- * Explains an error response of the API.
- * @param {number} status - The HTTP status of the response.
- * @returns {string} The message of the status, or the server error message for any other one.
+ * Tells whether a table of messages has its own entry for a key, which `toString` is not.
+ * @param {object} params
+ * @param {object} params.messages - The messages, by key.
+ * @param {unknown} params.key - The key, from the response of the API.
+ * @returns {boolean} `true` when the table explains the key.
  */
-export const getErrorMessage = (status) => {
-  const isExplainedStatus = Object.prototype.hasOwnProperty.call(ERROR_MESSAGES_BY_STATUS, status);
+const hasMessage = ({ messages, key }) => Object.prototype.hasOwnProperty.call(messages, key);
+
+/**
+ * Reads the error code of the body of an error response.
+ * @param {unknown} body - The body, as JSON parsed it, or `undefined` when it is missing or not
+ *   JSON.
+ * @returns {string|null} The code, when the page has a message for it, `null` otherwise.
+ * @example getErrorCode({ code: 'column_full', message: 'The column 1 is full!' }) // 'column_full'
+ */
+export const getErrorCode = (body) => {
+  const code = body?.code;
+  const isKnownCode = typeof code === 'string'
+    && hasMessage({ messages: ERROR_MESSAGES_BY_CODE, key: code });
+  return isKnownCode ? code : null;
+};
+
+/**
+ * Explains an error response of the API: by the code of its body, or by its status when the code
+ * is missing or unknown.
+ * @param {object} params
+ * @param {number} params.status - The HTTP status of the response.
+ * @param {unknown} [params.body] - The body, as JSON parsed it, or `undefined` when it is missing
+ *   or not JSON.
+ * @returns {string} The message of the code, else of the status, else the server error message.
+ * @example getErrorMessage({ status: 400, body: { code: 'not_your_turn' } })
+ * // 'Ce n’est pas le tour de ce joueur : rechargez la page.'
+ */
+export const getErrorMessage = ({ status, body }) => {
+  const code = getErrorCode(body);
+  if (code) {
+    return ERROR_MESSAGES_BY_CODE[code];
+  }
+
+  const isExplainedStatus = hasMessage({ messages: ERROR_MESSAGES_BY_STATUS, key: status });
   return isExplainedStatus ? ERROR_MESSAGES_BY_STATUS[status] : SERVER_ERROR_MESSAGE;
+};
+
+/**
+ * Reads the JSON body of a response without failing.
+ * @param {Response} response - The response of the API.
+ * @returns {Promise<unknown>} The parsed body, or `undefined` when it is missing or not JSON.
+ */
+const readBody = async (response) => {
+  try {
+    return await response.json();
+  } catch {
+    return undefined;
+  }
 };
 
 /**
@@ -39,13 +87,9 @@ export const requestGame = async ({ route, init, fetchGame = fetch }) => {
   }
 
   if (!response.ok) {
-    return { error: getErrorMessage(response.status) };
+    return { error: getErrorMessage({ status: response.status, body: await readBody(response) }) };
   }
 
-  try {
-    const game = await response.json();
-    return isGameStatus(game) ? { game } : { error: SERVER_ERROR_MESSAGE };
-  } catch {
-    return { error: SERVER_ERROR_MESSAGE };
-  }
+  const game = await readBody(response);
+  return isGameStatus(game) ? { game } : { error: SERVER_ERROR_MESSAGE };
 };
