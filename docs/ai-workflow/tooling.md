@@ -1,8 +1,7 @@
 # Tooling
 
 [Tooling][tooling] gives the tools shared by every repository, their versions on the machine and
-how they hand over to each other. This page gives what this repository adds. The versions of the
-project tools come from `pnpm-lock.yaml` and `package.json`.
+how they hand over to each other. This page gives what this repository adds.
 
 | Tool | In this repository |
 | --- | --- |
@@ -10,13 +9,16 @@ project tools come from `pnpm-lock.yaml` and `package.json`.
 | [cmux][cmux] | One workspace per agent, titled `MASTER-C4` or `C4-<n>`, and their messages |
 | [Worktrunk][worktrunk] | A worktree per ticket from `origin/master`, set up by `.config/wt.toml` |
 | [GitHub][github] | The `C4-` autolink, Project 12 and the `Protect master` ruleset |
-| commitlint 21.2.3, Husky 9.1.7 | Conventional Commits and the `Refs: C4-<n>` trailer |
+| commitlint 21, Husky 9 | Conventional Commits and the `Refs: C4-<n>` trailer |
 | GitHub Actions | `ci.yml` (lint, tests), `commit-messages.yml` (commitlint) and `live-check.yml` (hourly and daily checks of the live site) |
 | Dependabot | Weekly pull requests for npm and GitHub Actions, of releases at least 7 days old |
-| pnpm 12.14.0, Node.js 24 | Install from the frozen lockfile, Node.js from `.nvmrc` |
-| Vitest 5.0.4, ESLint 10.12.0 | Tests, and lint of the code |
-| Redocly CLI 2.62.2 | Lint of the OpenAPI document |
-| Wrangler 4.149.0, Workers Builds | `pnpm dev` locally, and the deployment of `master` |
+| pnpm 12, Node.js 24 | Install from the frozen lockfile, pnpm pinned by `packageManager` and Node.js by `.nvmrc` |
+| Vitest 5, ESLint 10 | Tests, and lint of the code |
+| Redocly CLI 2 | Lint of the OpenAPI document |
+| Wrangler 4, Workers Builds | `pnpm dev` locally, and the deployment of `master` |
+
+The table gives major versions only: Dependabot bumps the others every week. The exact ones are in
+`package.json` and `pnpm-lock.yaml`.
 
 ## Worktrunk project hooks
 
