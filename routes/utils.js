@@ -10,8 +10,10 @@ const {
   LAST_CLIENT_ERROR_STATUS,
   BODY_PARSER_ERROR_CODES,
   JSON_MEDIA_TYPE,
+} = require('./constants/http');
+const {
   CONTENT_LENGTH_HEADER,
-} = require('./constants');
+} = require('./constants/headers');
 const { getClientNetworkKey } = require('./clientNetwork');
 
 /**

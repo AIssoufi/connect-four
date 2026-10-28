@@ -16,7 +16,7 @@ const {
   IPV6_ZONE_SEPARATOR,
   DECIMAL_RADIX,
   HEXADECIMAL_RADIX,
-} = require('./constants');
+} = require('./constants/ipAddress');
 
 /**
  * Reads an IPv4 address in dotted decimal.

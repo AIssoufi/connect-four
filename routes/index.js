@@ -18,9 +18,11 @@ const {
   METHOD_NOT_ALLOWED_MESSAGE,
   UNSUPPORTED_MEDIA_TYPE_MESSAGE,
   JSON_MEDIA_TYPE,
+} = require('./constants/http');
+const {
   CLIENT_IP_HEADER,
   ALLOW_HEADER,
-} = require('./constants');
+} = require('./constants/headers');
 
 /**
  * Parses the JSON body of a move. A move is a few bytes, so the parser reads plain bodies only:
