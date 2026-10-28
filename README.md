@@ -245,8 +245,11 @@ its title unless a bot opened it, with commitlint (see [Commit messages](#commit
   one of them does not answer 200;
 - every day at 06:17 UTC, the full check then starts a game, reads its status and plays a first
   move;
-- every hour at minute 47, the files-only check (`--files-only`) starts no game: it checks
-  instead that an unknown game answers its JSON 404 with the code `game_not_found`;
+- every hour at minutes 17 and 47, the files-only check (`--files-only`) starts no game: it
+  checks instead that an unknown game answers its JSON 404 with the code `game_not_found`;
+- GitHub drops or delays scheduled runs under load, hence the two hourly runs;
+- a daily run that starts more than 2 hours after 06:17 UTC checks the files only and says so in
+  its job summary, so that it adds no game close to a manual full run;
 - it prints each request;
 - to run it by hand, click "Run workflow" on the workflow in the Actions tab, with a `host` input
   (`connect-four.issoufi.fr` by default) and a `files-only` box, or run
