@@ -45,6 +45,8 @@ const NO_PAGE_HEADERS = { 'Content-Security-Policy': null, 'Referrer-Policy': nu
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Strict-Transport-Security': 'max-age=31536000',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+  'Cross-Origin-Opener-Policy': 'same-origin',
 };
 
 /**

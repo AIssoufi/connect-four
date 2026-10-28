@@ -18,12 +18,17 @@ const TEMPORARY_REDIRECT_STATUS = 307;
 /** The headers that `public/_headers` sets, in the order of the values below. */
 const SECURITY_HEADER_NAMES = [
   'X-Content-Type-Options', 'Strict-Transport-Security',
+  'Permissions-Policy', 'Cross-Origin-Opener-Policy',
   'Referrer-Policy', 'Content-Security-Policy',
 ];
 const NOSNIFF = 'nosniff';
 /** HTTPS only for a year, for this host alone: neither `includeSubDomains` nor `preload`. */
 const HSTS = 'max-age=31536000';
 const REFERRER_POLICY = 'strict-origin-when-cross-origin';
+const PERMISSIONS_POLICY = 'camera=(), microphone=(), geolocation=(), payment=(), usb=()';
+const OPENER_POLICY = 'same-origin';
+/** The headers that every response carries, from the files and from the Express app alike. */
+const SHARED_HEADERS = [NOSNIFF, HSTS, PERMISSIONS_POLICY, OPENER_POLICY];
 /** The directives that `default-src` does not cover, which both policies end with. */
 const NO_FALLBACK_DIRECTIVES = "base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 const SITE_ONLY_POLICY = `default-src 'self'; ${NO_FALLBACK_DIRECTIVES}`;
@@ -226,12 +231,20 @@ describe('the Worker', () => {
       (name) => response.headers.get(name),
     );
 
-    expect(readSecurityHeaders(page)).toEqual([NOSNIFF, HSTS, REFERRER_POLICY, SITE_ONLY_POLICY]);
-    expect(readSecurityHeaders(script)).toEqual([NOSNIFF, HSTS, REFERRER_POLICY, SITE_ONLY_POLICY]);
+    expect(readSecurityHeaders(page)).toEqual(
+      [...SHARED_HEADERS, REFERRER_POLICY, SITE_ONLY_POLICY],
+    );
+    expect(readSecurityHeaders(script)).toEqual(
+      [...SHARED_HEADERS, REFERRER_POLICY, SITE_ONLY_POLICY],
+    );
     // Its own rule replaces the policy of the whole site, instead of joining it with a comma.
-    expect(readSecurityHeaders(docs)).toEqual([NOSNIFF, HSTS, REFERRER_POLICY, API_DOCS_POLICY]);
-    // The Express app sends nosniff and HSTS itself, but none of the policies of the files.
-    expect(readSecurityHeaders(game)).toEqual([NOSNIFF, HSTS, null, null]);
+    expect(readSecurityHeaders(docs)).toEqual(
+      [...SHARED_HEADERS, REFERRER_POLICY, API_DOCS_POLICY],
+    );
+    // The Express app sends the shared headers itself, but none of the policies of the files.
+    expect(readSecurityHeaders(game)).toEqual(
+      [...SHARED_HEADERS, null, null],
+    );
     await Promise.all([page, script, docs, game].map((response) => response.body.cancel()));
   });
 
