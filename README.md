@@ -100,10 +100,11 @@ The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), d
   them only `X-Content-Type-Options` and `Strict-Transport-Security`, and its HTML `404` page
   (`routes/notFoundPage.js`, styled by `public/not-found.css`) the same Content-Security-Policy
   and Referrer-Policy as the files.
-- The page loads `public/main.js` as an ES module, which draws the game. It calls the API through
-  `public/api.js`, imports its rules from `public/utils.js` and the winning cells from
-  `public/winning-cells.js`, and writes its texts with `public/texts.js` from the copy of
-  `public/constants.js`.
+- The page loads `public/main.js` as an ES module, which runs the game. It draws the board and the
+  column buttons with `public/board.js`, moves the focus between the columns with
+  `public/keyboard.js`, and calls the API through `public/api.js`. These modules import their
+  rules from `public/utils.js` and the winning cells from `public/winning-cells.js`, and write
+  their texts with `public/texts.js` from the copy of `public/constants.js`.
 - `index.js` runs the Express app of `routes/` on the Worker, with the `nodejs_compat` flag.
 - Each game lives in its own [Durable Object](https://developers.cloudflare.com/durable-objects/)
   (`worker/Game.js`), which saves its moves and plays them again in the engine of `app/` when it
@@ -182,6 +183,8 @@ deployed to least recently.
   Durable Objects;
 - the helpers of the page (`public/utils.test.js`, `public/texts.test.js`) and its calls to the
   API (`public/api.test.js`), with a fake `fetch`;
+- the board and keyboard modules of the page (`public/board.test.js`, `public/keyboard.test.js`),
+  in a jsdom document;
 - the page script (`public/main.test.js`), run on the elements of `index.html` in a
   [jsdom](https://github.com/jsdom/jsdom) document with a fake `fetch`;
 - the whole Worker (`index.test.js`), run in the local Workers runtime by `createTestHarness` of
