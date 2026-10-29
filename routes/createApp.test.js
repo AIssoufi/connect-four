@@ -320,8 +320,8 @@ describe('createApp', () => {
 
   it.each([
     ['malformed JSON', '{"playerId":'],
-    // `express.json()` takes only objects and arrays.
-    ['JSON null', 'null'],
+    // A bare word is not JSON, while `null` or `"red"` is and gets `invalid_move`.
+    ['a bare word', 'red'],
   ])('refuses %s with the message of the parser', async (_case, body) => {
     await startServer();
 

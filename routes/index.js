@@ -27,8 +27,10 @@ const {
 /**
  * Parses the JSON body of a move. A move is a few bytes, so the parser reads plain bodies only:
  * a compressed one (a `Content-Encoding` other than `identity`) gets 415 and is never inflated.
+ * It takes any JSON value, not only objects and arrays, so that `parseMove()` answers
+ * `invalid_move` to valid JSON that is not an object, such as `null` or `"red"`.
  */
-const parseJsonBody = express.json({ inflate: false, type: JSON_MEDIA_TYPE });
+const parseJsonBody = express.json({ inflate: false, strict: false, type: JSON_MEDIA_TYPE });
 
 /**
  * Answers 415 to a move whose body comes with a type other than JSON, which `parseJsonBody`
