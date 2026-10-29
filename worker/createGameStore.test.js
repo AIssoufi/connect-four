@@ -1,10 +1,12 @@
 import {
-  describe, it, expect, beforeEach,
+  describe, it, expect, beforeEach, vi,
 } from 'vitest';
 import createGameStore from './createGameStore';
 import Engine from '../app/engine';
-import { createFakeGameNamespace } from './testDoubles';
-import { GAME_ID_LENGTH, GAME_ID_PATTERN } from './constants';
+import { createFakeGameNamespace, createMapStorage } from './testDoubles';
+import {
+  GAME_ID_LENGTH, GAME_ID_PATTERN, GAME_STORE_CHECK_ID, GAME_STORE_CHECK_NAME,
+} from './constants';
 
 const NEW_GAME_STATUS = new Engine().getStatus();
 const RED_IN_COLUMN_4 = { playerId: 'red', column: 4 };
@@ -58,6 +60,60 @@ describe('createGameStore', () => {
 
     expect(await games.getStatus(gameId)).toBeNull();
     expect(await games.play({ gameId, move: RED_IN_COLUMN_4 })).toBeNull();
+  });
+
+  describe('with the id of the live check', () => {
+    let puts;
+
+    beforeEach(() => {
+      puts = vi.fn();
+      namespace = createFakeGameNamespace({
+        createStorage: () => ({ ...createMapStorage(), put: puts }),
+      });
+      vi.spyOn(namespace, 'idFromName');
+      vi.spyOn(namespace, 'idFromString');
+      games = createGameStore({ namespace });
+    });
+
+    it('asks the Durable Object of its name, which has no game, and writes nothing', async () => {
+      expect(await games.getStatus(GAME_STORE_CHECK_ID)).toBeNull();
+      expect(await games.getStatus(GAME_STORE_CHECK_ID)).toBeNull();
+
+      expect(namespace.idFromName).toHaveBeenCalledWith(GAME_STORE_CHECK_NAME);
+      expect(namespace.idFromString).not.toHaveBeenCalled();
+      expect(puts).not.toHaveBeenCalled();
+    });
+
+    it('plays no move, outside of any Durable Object', async () => {
+      expect(await games.play({ gameId: GAME_STORE_CHECK_ID, move: RED_IN_COLUMN_4 })).toBeNull();
+
+      expect(namespace.idFromName).not.toHaveBeenCalled();
+      expect(puts).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['an id one digit too long', `${GAME_STORE_CHECK_ID}0`],
+      ['an id one digit too short', GAME_STORE_CHECK_ID.slice(1)],
+      ['an id with a trailing space', `${GAME_STORE_CHECK_ID} `],
+      ['the name of its Durable Object', GAME_STORE_CHECK_NAME],
+    ])('does not take %s for it', async (_case, gameId) => {
+      expect(await games.getStatus(gameId)).toBeNull();
+
+      expect(namespace.idFromName).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['a missing binding', undefined, TypeError],
+      ['a binding without idFromName', {}, TypeError],
+      ['a Durable Object that fails', {
+        idFromName: () => ({}),
+        get: () => ({ getStatus: async () => { throw new Error('Durable Object reset'); } }),
+      }, 'Durable Object reset'],
+    ])('fails with %s, so that the live check fails', async (_case, brokenNamespace, error) => {
+      const brokenGames = createGameStore({ namespace: brokenNamespace });
+
+      await expect(brokenGames.getStatus(GAME_STORE_CHECK_ID)).rejects.toThrow(error);
+    });
   });
 
   it.each([

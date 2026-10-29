@@ -22,21 +22,40 @@ export const createMapStorage = () => {
  * Builds a stand-in for the `GAMES` Durable Object namespace, for the tests that run in
  * Node.js: each id it creates gets its own `StoredGame`, whose methods answer promises as the
  * RPC stubs do, and which is never deleted. Like the real namespace, `idFromString` refuses an
- * id it did not create.
- * @returns {{ newUniqueId: Function, idFromString: Function, get: Function }} The namespace.
+ * id it did not create, and `idFromName` gives the same instance for the same name.
+ * @param {object} [params]
+ * @param {() => object} [params.createStorage] - Builds the storage of each instance, such as
+ *   one that records its writes. `createMapStorage` by default.
+ * @returns {{ newUniqueId: Function, idFromName: Function, idFromString: Function, get: Function }}
+ * The namespace.
  */
-export const createFakeGameNamespace = () => {
+export const createFakeGameNamespace = ({ createStorage = createMapStorage } = {}) => {
   const gamesById = new Map();
+  let uniqueIdCount = 0;
   const toId = (gameId) => ({ toString: () => gameId });
   const keepGame = async () => {};
+  const addGame = (gameId) => {
+    gamesById.set(gameId, new StoredGame({
+      storage: createStorage(),
+      scheduleDeletion: keepGame,
+    }));
+  };
 
   return {
     newUniqueId() {
-      const gameId = (gamesById.size + 1).toString(16).padStart(GAME_ID_LENGTH, '0');
-      gamesById.set(gameId, new StoredGame({
-        storage: createMapStorage(),
-        scheduleDeletion: keepGame,
-      }));
+      uniqueIdCount += 1;
+      const gameId = uniqueIdCount.toString(16).padStart(GAME_ID_LENGTH, '0');
+      addGame(gameId);
+
+      return toId(gameId);
+    },
+    idFromName(name) {
+      // A prefix that no id of `newUniqueId` has, so that a name never meets a game.
+      const gameId = `name:${name}`;
+      const isNew = !gamesById.has(gameId);
+      if (isNew) {
+        addGame(gameId);
+      }
 
       return toId(gameId);
     },

@@ -1,10 +1,13 @@
-const { GAME_ID_PATTERN } = require('./constants');
+const {
+  GAME_ID_PATTERN, GAME_STORE_CHECK_ID, GAME_STORE_CHECK_NAME,
+} = require('./constants');
 
 /**
  * @typedef {object} GameStore
  * @property {() => Promise<{ gameId: string, status: object }>} create - Starts a new game.
  * @property {(gameId: string) => Promise<object | null>} getStatus - Gives the status of a
- *   game, or `null` when no game has this id.
+ *   game, or `null` when no game has this id. `GAME_STORE_CHECK_ID` reaches the Durable Object
+ *   named `GAME_STORE_CHECK_NAME`, where no game starts, so that the live check meets a real one.
  * @property {(params: { gameId: string, move: object }) => Promise<object | null>} play - Plays
  *   a move in a game. See `StoredGame.play()`; `null` when no game has this id.
  */
@@ -49,7 +52,10 @@ const createGameStore = ({ namespace }) => {
     },
 
     async getStatus(gameId) {
-      const game = findGame(gameId);
+      const isStoreCheck = gameId === GAME_STORE_CHECK_ID;
+      const game = isStoreCheck
+        ? namespace.get(namespace.idFromName(GAME_STORE_CHECK_NAME))
+        : findGame(gameId);
       if (!game) {
         return null;
       }
