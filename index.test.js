@@ -223,7 +223,7 @@ describe('the Worker', () => {
     })));
   });
 
-  it('sends the security headers of `public/_headers` with the files, only nosniff and HSTS with the API', async () => {
+  it('sends the security headers of `public/_headers` with the files, and nosniff, HSTS, Permissions-Policy and Cross-Origin-Opener-Policy with the API', async () => {
     const [page, script, docs, game] = await Promise.all(
       ['/', '/main.js', '/api/v1/', '/game/unknown/status'].map((route) => harness.fetch(route)),
     );
