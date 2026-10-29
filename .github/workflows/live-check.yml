@@ -3,8 +3,8 @@ name: Live check
 on:
   schedule:
     # Every day at 06:17 UTC, off the hour when GitHub delays the scheduled runs most: the full
-    # check, with a game. FULL_CHECK and DAILY_SECONDS below repeat this string and its time:
-    # change them together.
+    # check, with a game, however late it starts. FULL_CHECK below repeats this string: change
+    # them together.
     - cron: '17 6 * * *'
     # Every hour at minutes 17 and 47: the files and the API docs only, with no game. GitHub drops
     # or delays many scheduled runs under load, so two hourly runs make a skipped one less likely
@@ -37,8 +37,7 @@ jobs:
           persist-credentials: false
 
       # The full check starts one game, which counts against the start rate limit: keep it daily.
-      # A daily run that starts over 2 hours late checks the files only and says so in the job
-      # summary, so that it adds no game close to a manual full run.
+      # The daily run starts its game however late GitHub starts it.
       - name: Request the site and the API
         env:
           # A scheduled run has no inputs: the script then checks its default host.
@@ -46,23 +45,8 @@ jobs:
           FILES_ONLY: ${{ inputs.files-only }}
           FULL_CHECK: ${{ github.event.schedule == '17 6 * * *' }}
           IS_SCHEDULED: ${{ github.event_name == 'schedule' }}
-          # 06:17 UTC, the time of the daily cron, in seconds since midnight.
-          DAILY_SECONDS: 22620
-          MAX_DELAY_SECONDS: 7200
-          MAX_EARLY_SECONDS: 3600
         run: |
           options=()
           if [[ $IS_SCHEDULED == true && $FULL_CHECK != true ]]; then FILES_ONLY=true; fi
-          if [[ $FULL_CHECK == true ]]; then
-            # UTC days have 86400 seconds. Adding a day first keeps a run delayed past midnight
-            # positive; one that starts under an hour early gets a negative delay and runs in full.
-            delay=$((($(date -u +%s) % 86400 - DAILY_SECONDS + 86400) % 86400))
-            if ((delay > 86400 - MAX_EARLY_SECONDS)); then delay=$((delay - 86400)); fi
-            if ((delay > MAX_DELAY_SECONDS)); then
-              FILES_ONLY=true
-              echo "The daily run started $((delay / 60)) minutes late: no game was started," \
-                'only the files were checked.' | tee -a "$GITHUB_STEP_SUMMARY"
-            fi
-          fi
           if [[ $FILES_ONLY == true ]]; then options+=(--files-only); fi
           scripts/live-check.sh "${options[@]}" "$HOST"

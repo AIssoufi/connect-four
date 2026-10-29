@@ -254,8 +254,8 @@ its title unless a bot opened it, with commitlint (see [Commit messages](#commit
 - a broken Durable Object backend answers 500 there and fails the check; the request writes
   nothing;
 - GitHub drops or delays scheduled runs under load, hence the two hourly runs;
-- a daily run that starts more than 2 hours after 06:17 UTC checks the files only and says so in
-  its job summary, so that it adds no game close to a manual full run;
+- the daily run plays its game however late GitHub starts it: one extra game stays far below the
+  start rate limit, and each game expires after 7 days;
 - it prints each request;
 - to run it by hand, click "Run workflow" on the workflow in the Actions tab, with a `host` input
   (`connect-four.issoufi.fr` by default) and a `files-only` box, or run
