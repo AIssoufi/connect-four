@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import {
   describe, it, expect, beforeAll, afterAll,
 } from 'vitest';
@@ -52,6 +52,12 @@ const SVG_ICON_LINK_PATTERN = /<link rel="icon" type="image\/svg\+xml" href="([^
 const GAME_ICON_ROUTE = '/favicon.svg';
 /** The `Accept` header that Chrome and Firefox send when they open a page. */
 const BROWSER_ACCEPT = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8';
+/** The entries at the root of `public/`, the folder of the static assets of the Worker. */
+const PUBLIC_FILES = readdirSync(new URL('public/', import.meta.url));
+/** The extension of the modules of the page. */
+const MODULE_EXTENSION = '.js';
+/** The ending of the tests of the page modules, which `public/.assetsignore` keeps unserved. */
+const TEST_FILE_SUFFIX = '.test.js';
 /** The stylesheets of the 404 page, which the assets of `public/` must serve. */
 const NOT_FOUND_PAGE_STYLESHEETS = ['/style.css', '/not-found.css'];
 /** The API docs page, without and with its trailing slash: links resolve against either one. */
@@ -91,6 +97,32 @@ const isStarted = ({ status }) => status === CREATED_STATUS;
  * @returns {boolean} True for a 429 answer.
  */
 const isRefused = ({ status }) => status === TOO_MANY_REQUESTS_STATUS;
+
+/**
+ * Tells whether a file of `public/` is the test of a page module.
+ * @param {string} file - The name of the file.
+ * @returns {boolean} True for a name that ends in `.test.js`.
+ */
+const isTestFile = (file) => file.endsWith(TEST_FILE_SUFFIX);
+
+/**
+ * Tells whether a file of `public/` is a module of the page.
+ * @param {string} file - The name of the file.
+ * @returns {boolean} True for a script that is not a test.
+ */
+const isPageModule = (file) => file.endsWith(MODULE_EXTENSION) && !isTestFile(file);
+
+/**
+ * Turns the name of a file of `public/` into the route that the Worker serves it at.
+ * @param {string} file - The name of the file.
+ * @returns {string} The name after a slash.
+ */
+const toRoute = (file) => `/${file}`;
+
+/** The routes of the modules of the page, read from the folder: a new module needs no change. */
+const PAGE_MODULE_ROUTES = PUBLIC_FILES.filter(isPageModule).map(toRoute);
+/** The routes of the tests of the page modules, read from the folder. */
+const PAGE_TEST_ROUTES = PUBLIC_FILES.filter(isTestFile).map(toRoute);
 
 /**
  * Computes the Subresource Integrity hash of a file of the installed `swagger-ui-dist`.
@@ -175,15 +207,22 @@ describe('the Worker', () => {
   });
 
   it('serves the modules of the page, but not their tests', async () => {
-    const modules = [
-      '/main.js', '/constants.js', '/utils.js', '/winning-cells.js', '/texts.js', '/api.js',
-    ];
-    const helpers = await Promise.all(modules.map((route) => harness.fetch(route)));
-    const tests = await harness.fetch('/utils.test.js');
+    const routes = [...PAGE_MODULE_ROUTES, ...PAGE_TEST_ROUTES];
+    const statuses = await Promise.all(routes.map(async (route) => {
+      const response = await harness.fetch(route);
 
-    expect(helpers.map(({ status }) => status)).toEqual(modules.map(() => OK_STATUS));
-    expect(tests.status).toBe(NOT_FOUND_STATUS);
-    await Promise.all([...helpers, tests].map((response) => response.body.cancel()));
+      await response.body.cancel();
+      return [route, response.status];
+    }));
+
+    // Guards against an empty folder read, which would make the check below pass vacuously.
+    expect(PAGE_MODULE_ROUTES).toContain('/main.js');
+    expect(PAGE_TEST_ROUTES).toEqual(expect.arrayContaining(['/utils.test.js', '/board.test.js']));
+    // Keyed by route, so that a failure names the file that the Worker serves wrongly.
+    expect(Object.fromEntries(statuses)).toEqual(Object.fromEntries([
+      ...PAGE_MODULE_ROUTES.map((route) => [route, OK_STATUS]),
+      ...PAGE_TEST_ROUTES.map((route) => [route, NOT_FOUND_STATUS]),
+    ]));
   });
 
   it('serves the docs of the API at /api/v1', async () => {
