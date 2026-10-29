@@ -261,6 +261,13 @@ describe('game routes', () => {
   it.each([
     ['an empty JSON body, which the parser reads as an empty object', { body: '' }, 'invalid_player'],
     ['a JSON array', { body: '[]' }, 'invalid_move'],
+    ['JSON null', { body: 'null' }, 'invalid_move'],
+    ['a JSON string', { body: '"red"' }, 'invalid_move'],
+    ['a JSON number', { body: '1' }, 'invalid_move'],
+    ['a JSON boolean', { body: 'true' }, 'invalid_move'],
+    ['a falsy JSON value', { body: 'false' }, 'invalid_move'],
+    ['a JSON zero', { body: '0' }, 'invalid_move'],
+    ['an empty JSON string', { body: '""' }, 'invalid_move'],
     ['a request without a body or a Content-Type', { contentType: null }, 'invalid_move'],
     ['an empty text/plain body, with no type to fix', { body: '', contentType: 'text/plain' }, 'invalid_move'],
     ['an empty object', { body: '{}' }, 'invalid_player'],
