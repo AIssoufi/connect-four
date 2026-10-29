@@ -249,7 +249,10 @@ its title unless a bot opened it, with commitlint (see [Commit messages](#commit
 - every day at 06:17 UTC, the full check then starts a game, reads its status and plays a first
   move;
 - every hour at minutes 17 and 47, the files-only check (`--files-only`) starts no game: it
-  checks instead that an unknown game answers its JSON 404 with the code `game_not_found`;
+  asks the status of the id made of 64 zeros, which reaches a real `Game` Durable Object that
+  holds no game, and expects the JSON 404 with the code `game_not_found`;
+- a broken Durable Object backend answers 500 there and fails the check; the request writes
+  nothing;
 - GitHub drops or delays scheduled runs under load, hence the two hourly runs;
 - a daily run that starts more than 2 hours after 06:17 UTC checks the files only and says so in
   its job summary, so that it adds no game close to a manual full run;

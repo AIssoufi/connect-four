@@ -6,14 +6,17 @@
 # Usage: scripts/live-check.sh [--files-only] [host], connect-four.issoufi.fr by default. The host
 # may also be a URL with its scheme, such as http://localhost:8787 for a local server.
 # Without --files-only, each run starts one game, which counts against the start rate limit:
-# never run it in a loop. With --files-only, it starts no game and checks instead that an unknown
-# game answers its JSON 404.
+# never run it in a loop. With --files-only, it starts no game and checks instead that a real
+# Durable Object answers the JSON 404 of a game that does not exist.
 set -euo pipefail
 
 readonly DEFAULT_HOST='connect-four.issoufi.fr'
 readonly PAGE_TITLE='<title>Puissance 4</title>'
 readonly FIRST_MOVE='{"playerId":"red","column":4}'
-readonly UNKNOWN_GAME_ID='00000000-0000-0000-0000-000000000000'
+# GAME_STORE_CHECK_ID of worker/constants.js: the Worker asks its status of a real Durable Object,
+# whose empty storage answers the 404, so that a broken game backend fails the check.
+# scripts/live-check.test.js keeps the two equal.
+readonly STORE_CHECK_GAME_ID='0000000000000000000000000000000000000000000000000000000000000000'
 readonly GAME_NOT_FOUND_CODE='game_not_found'
 
 files_only=false
@@ -121,8 +124,9 @@ echo "GET $base_url/api/v1/openapi.yaml answers 200"
 request 200 "$base_url/api/v1/openapi.yaml" > /dev/null
 
 if [[ $files_only == true ]]; then
-  echo "GET $base_url/game/$UNKNOWN_GAME_ID/status answers 404 with the code $GAME_NOT_FOUND_CODE"
-  error=$(request 404 "$base_url/game/$UNKNOWN_GAME_ID/status")
+  store_check_url="$base_url/game/$STORE_CHECK_GAME_ID/status"
+  echo "GET $store_check_url answers 404 with the code $GAME_NOT_FOUND_CODE"
+  error=$(request 404 "$store_check_url")
   jq --exit-status --arg code "$GAME_NOT_FOUND_CODE" '.code == $code' <<< "$error" > /dev/null || {
     echo "The answer has not the code $GAME_NOT_FOUND_CODE: $error" >&2
     exit 1

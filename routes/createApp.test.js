@@ -16,7 +16,7 @@ import {
   METHOD_NOT_ALLOWED_STATUS,
   SERVER_ERROR_STATUS,
 } from './constants';
-import { GAME_ID_LENGTH } from '../worker/constants';
+import { GAME_ID_LENGTH, GAME_STORE_CHECK_ID } from '../worker/constants';
 
 const PAYLOAD_TOO_LARGE_STATUS = 413;
 const UNSUPPORTED_MEDIA_TYPE_STATUS = 415;
@@ -25,7 +25,7 @@ const MOVE_BODY = JSON.stringify({ playerId: 'red', column: 1 });
 /** Above the 100 kB that `express.json()` accepts by default. */
 const TOO_LARGE_BODY = JSON.stringify({ playerId: 'red', column: 1, padding: 'x'.repeat(200000) });
 /** An id that no game has: the body is refused before the id is looked up. */
-const UNKNOWN_GAME_ID = '0'.repeat(GAME_ID_LENGTH);
+const UNKNOWN_GAME_ID = 'f'.repeat(GAME_ID_LENGTH);
 /** The message of a 405, written out so that a change of the constant fails the tests. */
 const METHOD_NOT_ALLOWED_MESSAGE = 'This route does not accept this method: see the Allow header.';
 /** The `Allow` header of the paths that start a game or play a move. */
@@ -329,6 +329,24 @@ describe('createApp', () => {
 
     expect(response.status).toBe(BAD_REQUEST_STATUS);
     expect(await response.json()).toEqual({ code: 'invalid_json', message: expect.stringContaining('JSON') });
+  });
+
+  it('answers the status of the live check with 404 from its Durable Object', async () => {
+    await startServer();
+
+    const response = await fetch(`${server.baseUrl}/game/${GAME_STORE_CHECK_ID}/status`);
+
+    expect(response.status).toBe(NOT_FOUND_STATUS);
+    expect(await response.json()).toEqual({ code: 'game_not_found', message: 'No game has this id.' });
+  });
+
+  it('answers the status of the live check with 500 when the Durable Objects are not bound', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await startServer(createGameStore({ namespace: undefined }));
+
+    const response = await fetch(`${server.baseUrl}/game/${GAME_STORE_CHECK_ID}/status`);
+
+    expect(response.status).toBe(SERVER_ERROR_STATUS);
   });
 
   it('refuses a body above the limit of the parser', async () => {
