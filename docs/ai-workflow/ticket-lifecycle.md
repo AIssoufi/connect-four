@@ -16,7 +16,7 @@ repository, a ticket goes through these steps.
 4. **Review** before the pull request: see [Reviews](reviews.md).
 5. **Pull request** against `master`, with `Closes #<n>`; the ticket moves to *In Review*. Its
    title is a Conventional Commit too, which commitlint checks.
-6. **Checks.** GitHub Actions runs `Lint and test`, `Test on Node.js 22`, `Test on Node.js 26` and
+6. **Checks.** GitHub Actions runs `Lint and test`, `Test on Node.js 22`, `Test on Node.js 24` and
    `Check the commit messages and the title`. No preview is deployed for a pull request
    ([#35](https://github.com/AIssoufi/connect-four/issues/35)).
 7. **Merge.** The master checks the pull request on GitHub and merges it with a merge commit

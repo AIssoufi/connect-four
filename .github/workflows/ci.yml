@@ -61,10 +61,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The oldest major release of Node.js that the engines field of package.json accepts and
-        # the newest one released, besides the one of .nvmrc. Dependabot does not update this list:
-        # add each new major release by hand.
-        node-version: [22, 26]
+        # Every LTS line of Node.js that the engines field of package.json accepts, besides the one
+        # of .nvmrc. Dependabot does not update this list: add each new LTS line by hand.
+        node-version: [22, 24]
     steps:
       - name: Check out the repository
         uses: actions/checkout@v7
