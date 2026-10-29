@@ -30,17 +30,34 @@ if [[ $host == *'://'* ]]; then
 else
   base_url="https://$host"
 fi
-# No --fail: request checks the status itself, so that it can expect a 404.
-curl_options=(--silent --show-error --retry 2 --max-time 20)
+# No --fail: send_request checks the status itself, so that it can expect a 404.
+curl_options=(--silent --show-error --max-time 20)
+# curl retries a timeout or a 408, 429 or 5xx whatever the method: only the GET requests may be
+# sent again, since a POST may have created its game or played its move before it failed.
+readonly GET_RETRIES=2
+readonly POST_RETRIES=0
 
 # Requests a URL with curl and checks its status code; prints the body.
 # Usage: request <expected status> <curl arguments...>
 request() {
-  local expected_status=$1
-  shift
+  send_request "$GET_RETRIES" "$@"
+}
+
+# Sends a POST request once, without retry, and checks its status code; prints the body.
+# Usage: post_once <expected status> <curl arguments...>
+post_once() {
+  send_request "$POST_RETRIES" "$@" --request POST
+}
+
+# Sends a request with the given curl retries and checks its status code; prints the body.
+# Usage: send_request <retries> <expected status> <curl arguments...>
+send_request() {
+  local retries=$1 expected_status=$2
+  shift 2
   local response status
   # A command substitution does not inherit `set -e`: stop on a failed request here.
-  response=$(curl "${curl_options[@]}" --write-out '\n%{http_code}' "$@") || return 1
+  response=$(curl "${curl_options[@]}" --retry "$retries" --write-out '\n%{http_code}' "$@") \
+    || return 1
   status=${response##*$'\n'}
   if [[ $status != "$expected_status" ]]; then
     echo "Expected the status $expected_status, got $status." >&2
@@ -136,7 +153,7 @@ if [[ $files_only == true ]]; then
 fi
 
 echo "POST $base_url/game answers 201 with an id"
-game=$(request 201 --request POST "$base_url/game")
+game=$(post_once 201 "$base_url/game")
 game_id=$(jq --exit-status --raw-output '.id | strings' <<< "$game") || {
   echo "The new game has no id: $game" >&2
   exit 1
@@ -147,7 +164,7 @@ echo "GET $base_url/game/$game_id/status answers 200"
 request 200 "$base_url/game/$game_id/status" > /dev/null
 
 echo "POST $base_url/game/$game_id/play with $FIRST_MOVE answers 200"
-request 200 --request POST --header 'Content-Type: application/json' \
+post_once 200 --header 'Content-Type: application/json' \
   --data "$FIRST_MOVE" "$base_url/game/$game_id/play" > /dev/null
 
 echo "The live site and its API answer."
