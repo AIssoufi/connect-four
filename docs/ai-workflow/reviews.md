@@ -21,7 +21,7 @@ the review:
 | Redocly CLI on the OpenAPI document (`pnpm lint:api`) | `Lint and test` | yes |
 | Vitest: engine, routes, storage, page, the whole Worker, hooks | `Lint and test` | yes |
 | `pnpm audit --audit-level moderate`, also every Monday on `master` | `Lint and test` | yes |
-| The same tests on the oldest and newest Node.js majors | `Test on Node.js 22`, `26` | yes |
+| The same tests on the other LTS lines that `engines` accepts | `Test on Node.js 22`, `24` | yes |
 | commitlint on each commit and on the title | `Check the commit messages…` | no |
 | commitlint on each new commit, before it is written | the `commit-msg` hook | |
 
