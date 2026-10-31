@@ -298,3 +298,7 @@ Co-Authored-By: …
 [docs/decisions/](docs/decisions/) keeps one record per decision.
 [docs/ai-workflow/](docs/ai-workflow/overview.md) explains how agents work on the project, and
 with which tools.
+
+## License
+
+[ISC](LICENSE), copyright ADAM Issoufi.
