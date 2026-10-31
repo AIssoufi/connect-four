@@ -8,7 +8,8 @@ import {
   TAB_INDEX, WINNING_CELL_CLASS_NAME,
 } from './constants.js';
 import { getPlayRoute } from './api.js';
-import { getColumnLabel, getMoveRefusal, getStatusText } from './texts.js';
+import { getColumnLabel } from './labels.js';
+import { getMoveRefusal, getStatusText } from './texts.js';
 
 /** A game that just started, on a board of 2 rows and 3 columns: red plays first. */
 const NEW_GAME = {

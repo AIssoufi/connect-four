@@ -6,7 +6,7 @@ import {
   CELL_CLASS_NAME, COLUMN_PICKER_CLASS_NAME, CURRENT_PLAYER_CLASS_PREFIX, ROW_CLASS_NAME,
   SELECTORS, TAB_INDEX, WINNING_CELL_CLASS_NAME,
 } from './constants.js';
-import { getCellLabel, getColumnLabel } from './texts.js';
+import { getCellLabel, getColumnLabel } from './labels.js';
 
 /** A game that just started, on a board of 2 rows and 3 columns: red plays first. */
 const NEW_GAME = {

@@ -3,7 +3,7 @@ import {
   SELECTORS, VISUALLY_HIDDEN_CLASS_NAME, WINNING_CELL_CLASS_NAME,
 } from './constants.js';
 import { getFocusedColumnIndex } from './keyboard.js';
-import { getCellLabel, getColumnLabel } from './texts.js';
+import { getCellLabel, getColumnLabel } from './labels.js';
 import {
   getBoardKey, getCellClassName, getColumnTabIndex, getNextPlayer, isBoardSize, isColumnFull,
   isGameOver,
