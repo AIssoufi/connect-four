@@ -1,9 +1,10 @@
 import {
-  DRAW_TEXT, FULL_COLUMN_MESSAGE, GAME_OVER_MESSAGE, GAME_STATES, PAGE_LOCALE, TURN_TEXT,
-  WIN_TEXT, WIN_WITH_CELLS_TEXT, WINNING_CELL_NAME,
+  DRAW_TEXT, EMPTY_CELL, FULL_COLUMN_MESSAGE, GAME_OVER_MESSAGE, GAME_STATES, MOVE_TEXT,
+  PAGE_LOCALE, TURN_TEXT, WIN_TEXT, WIN_WITH_CELLS_TEXT, WINNING_CELL_NAME,
 } from './constants.js';
 import {
-  getNextPlayer, getPlayerColorName, getPositionNumber, hasOwnKey, isColumnFull, isGameOver,
+  getNextPlayer, getPlayerColorName, getPositionNumber, hasOwnKey, isBoardSize, isColumnFull,
+  isDrawableBoard, isGameOver,
 } from './utils.js';
 import { getWinningCells } from './winning-cells.js';
 
@@ -12,6 +13,9 @@ const PLACEHOLDER_PATTERN = /\{(\w+)\}/g;
 
 /** Joins the items of a list as the page language writes them, such as `a, b et c`. */
 const LIST_FORMAT = new Intl.ListFormat(PAGE_LOCALE, { style: 'long', type: 'conjunction' });
+
+/** What separates two sentences of a text. */
+const SENTENCE_SEPARATOR = ' ';
 
 /**
  * Writes a text from its template, so that the page copy stays in `constants.js`.
@@ -87,6 +91,76 @@ export const getStatusText = (game) => {
     default:
       return '';
   }
+};
+
+/**
+ * Lists the tokens of a board that sit on a cell the previous board left empty.
+ * @param {object} params
+ * @param {Array<Array<string|number>>} [params.previousBoard] - The board shown before, top row
+ *   first, missing before the first game.
+ * @param {Array<Array<string|number>>} params.board - The new board, top row first.
+ * @returns {Array<{ rowIndex: number, columnIndex: number, token: string }>} The new tokens, top
+ *   row first, none when the two boards do not have the same size.
+ */
+const findNewTokens = ({ previousBoard, board }) => {
+  const isComparable = isDrawableBoard(previousBoard) && isBoardSize({
+    board, rowCount: previousBoard.length, columnCount: previousBoard[0].length,
+  });
+  if (!isComparable) {
+    return [];
+  }
+
+  return board.flatMap((row, rowIndex) => row.flatMap((token, columnIndex) => {
+    const wasEmpty = previousBoard[rowIndex][columnIndex] === EMPTY_CELL;
+    const isPlayerToken = getPlayerColorName(token) !== null;
+    return wasEmpty && isPlayerToken ? [{ rowIndex, columnIndex, token }] : [];
+  }));
+};
+
+/**
+ * Writes the move that turned a board into the next one, so that a screen reader says where the
+ * token landed.
+ * @param {object} params
+ * @param {Array<Array<string|number>>} [params.previousBoard] - The board shown before, top row
+ *   first, missing before the first game.
+ * @param {Array<Array<string|number>>} params.board - The new board, top row first.
+ * @returns {string} The text, with the column and the row numbered from 1, or an empty text unless
+ *   exactly one token appeared: an unchanged board, a new game, or boards of two different games.
+ * @example getMoveText({ previousBoard: [[0, 0]], board: [[0, 'red']] })
+ *   // 'Rouge a joué colonne 2, ligne 1.'
+ */
+export const getMoveText = ({ previousBoard, board }) => {
+  const newTokens = findNewTokens({ previousBoard, board });
+  if (newTokens.length !== 1) {
+    return '';
+  }
+
+  const [{ rowIndex, columnIndex, token }] = newTokens;
+  return fillText({
+    template: MOVE_TEXT,
+    values: {
+      color: capitalize(getPlayerColorName(token)),
+      column: getPositionNumber(columnIndex),
+      row: getPositionNumber(rowIndex),
+    },
+  });
+};
+
+/**
+ * Writes the status of a game after the move that led to it, for the live region of the page,
+ * which announces each new text once.
+ * @param {object} params
+ * @param {Array<Array<string|number>>} [params.previousBoard] - The board shown before, top row
+ *   first, missing before the first game.
+ * @param {object} params.game - The new game status.
+ * @returns {string} The move, when there is one, then the text of `getStatusText`.
+ * @example getStatusWithMoveText({ previousBoard, game })
+ *   // 'Rouge a joué colonne 4, ligne 6. Au tour de jaune.'
+ */
+export const getStatusWithMoveText = ({ previousBoard, game }) => {
+  const texts = [getMoveText({ previousBoard, board: game?.board }), getStatusText(game)];
+  const isWritten = (text) => text !== '';
+  return texts.filter(isWritten).join(SENTENCE_SEPARATOR);
 };
 
 /**

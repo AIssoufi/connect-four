@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { fillText, getMoveRefusal, getStatusText } from './texts.js';
+import {
+  fillText, getMoveRefusal, getMoveText, getStatusText, getStatusWithMoveText,
+} from './texts.js';
 import { DRAW_TEXT, GAME_OVER_MESSAGE } from './constants.js';
 
 /** A board of 2 rows and 3 columns, top row first, whose first column is full. */
@@ -20,6 +22,21 @@ const GAME = {
 /** The number of rows and of columns of the board of a real game. */
 const ROW_COUNT = 6;
 const COLUMN_COUNT = 7;
+
+/** The index of the bottom row of the board of a real game. */
+const BOTTOM_ROW_INDEX = ROW_COUNT - 1;
+
+/** `BOARD` before red played its token of the second column. */
+const BOARD_BEFORE_LAST_MOVE = [
+  ['red', 0, 0],
+  ['yellow', 0, 0],
+];
+
+/** @returns {Array<Array<number>>} An empty board of the size of a real game. */
+const createEmptyBoard = () => Array.from(
+  { length: ROW_COUNT },
+  () => Array(COLUMN_COUNT).fill(0),
+);
 
 /** A game that red won, on a board of the size of a real game. */
 const WON_GAME = {
@@ -111,6 +128,121 @@ describe('getStatusText', () => {
     expect(getStatusText({ ...GAME, state: 'paused' })).toBe('');
     expect(getStatusText(undefined)).toBe('');
     expect(getStatusText(null)).toBe('');
+  });
+});
+
+describe('getMoveText', () => {
+  it('names the first move of a game, numbered from 1, top row first', () => {
+    const previousBoard = createEmptyBoard();
+    const board = createEmptyBoard();
+    board[BOTTOM_ROW_INDEX][3] = 'red';
+
+    expect(getMoveText({ previousBoard, board })).toBe('Rouge a joué colonne 4, ligne 6.');
+  });
+
+  it('names the color of the new token', () => {
+    const previousBoard = [[0, 0, 0], ['yellow', 'red', 0]];
+    const board = [['yellow', 0, 0], ['yellow', 'red', 0]];
+
+    expect(getMoveText({ previousBoard, board })).toBe('Jaune a joué colonne 1, ligne 1.');
+  });
+
+  it('reaches the corners of the board', () => {
+    expect(getMoveText({ previousBoard: [[0, 0], [0, 0]], board: [['red', 0], [0, 0]] }))
+      .toBe('Rouge a joué colonne 1, ligne 1.');
+    expect(getMoveText({ previousBoard: [[0, 0], [0, 0]], board: [[0, 0], [0, 'yellow']] }))
+      .toBe('Jaune a joué colonne 2, ligne 2.');
+  });
+
+  it('writes nothing for an unchanged board', () => {
+    expect(getMoveText({ previousBoard: BOARD, board: BOARD })).toBe('');
+    expect(getMoveText({ previousBoard: createEmptyBoard(), board: createEmptyBoard() })).toBe('');
+  });
+
+  it('writes nothing for a new game, which removes the tokens', () => {
+    expect(getMoveText({ previousBoard: BOARD, board: [[0, 0, 0], [0, 0, 0]] })).toBe('');
+  });
+
+  it('writes nothing when several tokens appeared, as between two games', () => {
+    expect(getMoveText({ previousBoard: [[0, 0, 0], [0, 0, 0]], board: BOARD })).toBe('');
+  });
+
+  it('writes nothing for a token that took the place of another one', () => {
+    const board = [['yellow', 0, 0], ['yellow', 'red', 0]];
+
+    expect(getMoveText({ previousBoard: BOARD, board })).toBe('');
+  });
+
+  it.each([
+    ['a number', 1],
+    ['an unknown player', 'blue'],
+    ['an inherited key', 'toString'],
+    ['null', null],
+    ['undefined', undefined],
+  ])('writes nothing when the new value of a cell is %s', (_case, token) => {
+    expect(getMoveText({ previousBoard: [[0, 0]], board: [[0, token]] })).toBe('');
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['null', null],
+    ['empty', []],
+    ['not a list', 'board'],
+    ['a list of empty rows', [[]]],
+    ['of uneven rows', [[0, 0], [0]]],
+    ['another height', [[0, 0, 0]]],
+    ['another width', [[0, 0], [0, 0]]],
+  ])('writes nothing when the previous board is %s', (_case, previousBoard) => {
+    expect(getMoveText({ previousBoard, board: BOARD })).toBe('');
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['null', null],
+    ['empty', []],
+    ['of uneven rows', [['red', 0, 0], [0]]],
+  ])('writes nothing when the new board is %s', (_case, board) => {
+    expect(getMoveText({ previousBoard: [[0, 0, 0], [0, 0, 0]], board })).toBe('');
+  });
+});
+
+describe('getStatusWithMoveText', () => {
+  /** The board of `GAME` before red played its last token. */
+  const previousBoard = BOARD_BEFORE_LAST_MOVE;
+
+  it('names the move, then whose turn it is', () => {
+    expect(getStatusWithMoveText({ previousBoard, game: GAME }))
+      .toBe('Rouge a joué colonne 2, ligne 2. Au tour de jaune.');
+  });
+
+  it('names the move, then who won and with which tokens', () => {
+    const game = {
+      ...GAME, state: 'won', winner: 'red', winningCells: [{ row: 1, column: 1 }],
+    };
+
+    expect(getStatusWithMoveText({ previousBoard, game }))
+      .toBe('Rouge a joué colonne 2, ligne 2. Rouge a gagné : ligne 2 colonne 2.');
+  });
+
+  it('names the move, then the draw', () => {
+    expect(getStatusWithMoveText({ previousBoard, game: { ...GAME, state: 'draw' } }))
+      .toBe(`Rouge a joué colonne 2, ligne 2. ${DRAW_TEXT}`);
+  });
+
+  it('writes the status alone without a move', () => {
+    expect(getStatusWithMoveText({ previousBoard: undefined, game: GAME }))
+      .toBe('Au tour de jaune.');
+    expect(getStatusWithMoveText({ previousBoard: BOARD, game: GAME })).toBe('Au tour de jaune.');
+  });
+
+  it('writes the move alone for a status it cannot describe', () => {
+    expect(getStatusWithMoveText({ previousBoard, game: { ...GAME, state: 'paused' } }))
+      .toBe('Rouge a joué colonne 2, ligne 2.');
+  });
+
+  it('returns an empty text without a game', () => {
+    expect(getStatusWithMoveText({ previousBoard, game: undefined })).toBe('');
+    expect(getStatusWithMoveText({ previousBoard, game: null })).toBe('');
   });
 });
 

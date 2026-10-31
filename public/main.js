@@ -2,7 +2,7 @@ import { GAME_ROUTE, SELECTORS } from './constants.js';
 import { getPlayRoute, requestGame } from './api.js';
 import { renderBoard, renderControlPanel } from './board.js';
 import { onControlPanelFocusIn, onControlPanelKeyDown } from './keyboard.js';
-import { getMoveRefusal, getStatusText } from './texts.js';
+import { getMoveRefusal, getStatusWithMoveText } from './texts.js';
 import { getNextPlayer, getPositionNumber } from './utils.js';
 import { getWinningCells } from './winning-cells.js';
 
@@ -27,14 +27,16 @@ const showText = ({ selector, text }) => {
 };
 
 /**
- * Shows a game status: the board, the column pickers, and whose turn it is or the result.
+ * Shows a game status: the board, the column pickers, the move just played, and whose turn it is
+ * or the result.
  * @param {object} game - The game status that the API returned.
  */
 const updateGame = (game) => {
+  const previousBoard = currentGame?.board;
   currentGame = game;
   renderBoard({ board: game.board, winningCells: getWinningCells(game) });
   renderControlPanel(game);
-  showText({ selector: SELECTORS.status, text: getStatusText(game) });
+  showText({ selector: SELECTORS.status, text: getStatusWithMoveText({ previousBoard, game }) });
 };
 
 /**

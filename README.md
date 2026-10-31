@@ -26,7 +26,9 @@ The page can also be played on a phone, with the keyboard alone and with a scree
 - Keyboard: Tab reaches the columns, the left and right arrows, Home and End move between them,
   and Enter or Space drops a token.
 - Screen readers announce each column and each cell of the board, such as "Ligne 3, colonne 2 :
-  rouge", and read whose turn it is and the messages as they change.
+  rouge", and read the messages as they change.
+- The status names each move before whose turn it is, such as "Rouge a joué colonne 4, ligne 6. Au
+  tour de jaune.", so a screen reader user hears where each token landed.
 - A dot marks the red tokens and a ring the yellow ones, so they are told apart without color.
 - After a win, a white ring around the tokens shows the line that won, and the status names its
   cells, such as "Rouge a gagné : ligne 3 colonne 1, ligne 4 colonne 1, ligne 5 colonne 1 et
