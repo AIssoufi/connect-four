@@ -206,6 +206,14 @@ describe('the Worker', () => {
     expect(favicon.headers.get('Content-Type')).toContain('image/svg+xml');
   });
 
+  it('serves the image of the link preview card as a PNG', async () => {
+    const image = await harness.fetch('/preview.png');
+
+    expect(image.status).toBe(OK_STATUS);
+    expect(image.headers.get('Content-Type')).toBe('image/png');
+    await image.body.cancel();
+  });
+
   it('serves the modules of the page, but not their tests', async () => {
     const routes = [...PAGE_MODULE_ROUTES, ...PAGE_TEST_ROUTES];
     const statuses = await Promise.all(routes.map(async (route) => {

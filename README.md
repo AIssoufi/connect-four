@@ -91,8 +91,9 @@ English, which may change. The OpenAPI document lists and describes each code.
 The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), described by
 `wrangler.jsonc`:
 
-- Cloudflare serves the files of `public/` (the page, its scripts, its favicon and the API docs)
-  before the Worker runs. `public/.assetsignore` keeps the tests of the page helpers out of it.
+- Cloudflare serves the files of `public/` (the page, its scripts, its favicon, the image of its
+  link preview card and the API docs) before the Worker runs. `public/.assetsignore` keeps the
+  tests of the page out of it.
 - `public/_headers` adds security headers to these files. Its Content-Security-Policy only allows
   the site itself and forbids other sites to frame the pages, and `/api/v1/` has its own to load
   Swagger UI from jsDelivr. Its Strict-Transport-Security keeps browsers on HTTPS for a year, for
@@ -190,6 +191,8 @@ deployed to least recently.
   in a jsdom document;
 - the page script (`public/main.test.js`), run on the elements of `index.html` in a
   [jsdom](https://github.com/jsdom/jsdom) document with a fake `fetch`;
+- the head of the page (`public/index.test.js`): its description, its link preview card and the
+  size of its image;
 - the whole Worker (`index.test.js`), run in the local Workers runtime by `createTestHarness` of
   Wrangler, with its files and its Durable Objects;
 - the commit message checks, which call Git.
