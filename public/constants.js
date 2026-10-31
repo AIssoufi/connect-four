@@ -128,11 +128,17 @@ export const SERVER_ERROR_MESSAGE = 'Erreur du serveur : réessayez.';
 /** The message shown when the server cannot be reached. */
 export const CONNECTION_ERROR_MESSAGE = 'Connexion au serveur impossible : réessayez.';
 
-/** The message shown when the server finds a column full that the page still shows free. */
-export const SERVER_FULL_COLUMN_MESSAGE = 'Cette colonne est pleine : rechargez la page.';
+/**
+ * The message shown when the server finds a column full that the page still showed free, once the
+ * page has read the board of the server.
+ */
+export const SERVER_FULL_COLUMN_MESSAGE = 'Cette colonne est pleine : le plateau est à jour.';
 
-/** The message shown when the server says that the other player plays next. */
-export const NOT_YOUR_TURN_MESSAGE = 'Ce n’est pas le tour de ce joueur : rechargez la page.';
+/**
+ * The message shown when the server says that the other player plays next, once the page has read
+ * the board of the server.
+ */
+export const NOT_YOUR_TURN_MESSAGE = 'Ce n’est pas le tour de ce joueur : le plateau est à jour.';
 
 /** The message shown when the player of the move has no token left. */
 export const NO_TOKEN_LEFT_MESSAGE = 'Ce joueur n’a plus de jeton : lancez une nouvelle partie.';
@@ -181,6 +187,9 @@ export const ERROR_MESSAGES_BY_CODE = {
   method_not_allowed: UNKNOWN_ROUTE_MESSAGE,
   too_many_starts: TOO_MANY_STARTS_MESSAGE,
 };
+
+/** The error codes of a move refused because the page shows a board behind the server's. */
+export const STALE_REFUSAL_CODES = ['not_your_turn', 'column_full'];
 
 /** The HTTP statuses of the API that the page explains, from `routes/constants/http.js`. */
 export const HTTP_STATUSES = {

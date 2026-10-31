@@ -1,5 +1,5 @@
 import { GAME_ROUTE, SELECTORS } from './constants.js';
-import { getPlayRoute, requestGame } from './api.js';
+import { requestGame, requestMove } from './api.js';
 import { renderBoard, renderControlPanel } from './board.js';
 import { onControlPanelFocusIn, onControlPanelKeyDown } from './keyboard.js';
 import { getMoveRefusal, getStatusText } from './texts.js';
@@ -38,28 +38,25 @@ const updateGame = (game) => {
 };
 
 /**
- * Sends a request that returns a game status, then shows the game, or the message that explains
- * why the request failed. A request sent while another one waits is dropped.
+ * Sends a request that may return a game status, then shows the game, when there is one, and the
+ * message of the answer, or none. A request sent while another one waits is dropped.
  * @param {object} params
- * @param {string} params.route - The path of the request.
- * @param {RequestInit} params.init - The method, the headers and the body.
+ * @param {() => Promise<{ game?: object, error?: string }>} params.sendRequest - Sends the
+ *   request, a move and the status read that may follow it being one request.
  */
-const sendGameRequest = async ({ route, init }) => {
+const sendGameRequest = async ({ sendRequest }) => {
   if (isRequestPending) {
     return;
   }
 
   isRequestPending = true;
-  const { game, error } = await requestGame({ route, init });
+  const { game, error } = await sendRequest();
   isRequestPending = false;
 
-  if (error) {
-    showText({ selector: SELECTORS.message, text: error });
-    return;
+  showText({ selector: SELECTORS.message, text: error ?? '' });
+  if (game) {
+    updateGame(game);
   }
-
-  showText({ selector: SELECTORS.message, text: '' });
-  updateGame(game);
 };
 
 /**
@@ -67,7 +64,9 @@ const sendGameRequest = async ({ route, init }) => {
  * the New game button starts another one. Only this page plays the game, so the board needs no
  * polling.
  */
-const startGame = () => sendGameRequest({ route: GAME_ROUTE, init: { method: 'POST' } });
+const startGame = () => sendGameRequest({
+  sendRequest: () => requestGame({ route: GAME_ROUTE, init: { method: 'POST' } }),
+});
 
 /**
  * Plays the next player in the column picked, or explains why the move cannot be played.
@@ -87,15 +86,17 @@ const onControlPanelClick = (event) => {
   }
 
   sendGameRequest({
-    route: getPlayRoute(currentGame.id),
-    init: {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        playerId: getNextPlayer(currentGame),
-        column: getPositionNumber(columnIndex),
-      }),
-    },
+    sendRequest: () => requestMove({
+      game: currentGame,
+      init: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          playerId: getNextPlayer(currentGame),
+          column: getPositionNumber(columnIndex),
+        }),
+      },
+    }),
   });
 };
 
