@@ -4,10 +4,10 @@ import {
 } from 'vitest';
 import pageHtml from './index.html?raw';
 import {
-  CELL_CLASS_NAME, CONNECTION_ERROR_MESSAGE, ERROR_MESSAGES_BY_CODE, GAME_ROUTE, SELECTORS,
-  TAB_INDEX, WINNING_CELL_CLASS_NAME,
+  CELL_CLASS_NAME, CONNECTION_ERROR_MESSAGE, ERROR_MESSAGES_BY_CODE, GAME_NOT_FOUND_MESSAGE,
+  GAME_ROUTE, SELECTORS, TAB_INDEX, WINNING_CELL_CLASS_NAME,
 } from './constants.js';
-import { getPlayRoute } from './api.js';
+import { getPlayRoute, getStatusRoute } from './api.js';
 import { getColumnLabel, getMoveRefusal, getStatusText } from './texts.js';
 
 /** A game that just started, on a board of 2 rows and 3 columns: red plays first. */
@@ -34,6 +34,9 @@ const GAME_WITH_FULL_COLUMN = {
   lastPlayerWhoPlayed: 'yellow',
   board: [[0, 'yellow', 0], [0, 'red', 0]],
 };
+
+/** A new game that replaces the one on the page while a request waits. */
+const REPLACING_GAME = { ...NEW_GAME, id: 'replacing-game' };
 
 /** A game that red won with its tokens of the first column: no column can be played. */
 const WON_GAME = {
@@ -62,6 +65,11 @@ const EMPTY_BOARD_CLASS_NAMES = NEW_GAME.board.flat().map(() => CELL_CLASS_NAME)
 /** The index of the cell that holds the token of `GAME_AFTER_RED_MOVE`, top row first. */
 const RED_TOKEN_CELL_INDEX = GAME_AFTER_RED_MOVE.board.flat().indexOf('red');
 
+/** The class names of the cells of `GAME_AFTER_RED_MOVE`, top row first. */
+const BOARD_AFTER_RED_MOVE = EMPTY_BOARD_CLASS_NAMES.map((className, cellIndex) => (
+  cellIndex === RED_TOKEN_CELL_INDEX ? `${CELL_CLASS_NAME} red-token` : className
+));
+
 /** The `tabindex` of each column button when the Tab key reaches the column at each index. */
 const TAB_INDEXES_BY_FOCUSED_COLUMN = COLUMN_INDEXES.map((focusedIndex) => COLUMN_INDEXES.map(
   (columnIndex) => String(columnIndex === focusedIndex ? TAB_INDEX.reachable : TAB_INDEX.skipped),
@@ -70,12 +78,28 @@ const TAB_INDEXES_BY_FOCUSED_COLUMN = COLUMN_INDEXES.map((focusedIndex) => COLUM
 /** The fake `fetch` of the page, which answers what each test sets. */
 const fetchGame = vi.fn();
 
+/** What `fetch` throws when the answer of a request never reaches the page. */
+const lostAnswer = new TypeError('Failed to fetch');
+
 /**
  * Builds the response of the API that returns a game status.
  * @param {object} game - The game status.
  * @returns {Pick<Response, 'ok' | 'json'>} The successful response.
  */
 const gameResponse = (game) => ({ ok: true, json: async () => game });
+
+/**
+ * Builds the response of the API that refuses a request.
+ * @param {object} params
+ * @param {string} params.code - The code of the body.
+ * @param {number} [params.status] - The HTTP status.
+ * @returns {Pick<Response, 'ok' | 'status' | 'json'>} The error response.
+ */
+const refusalResponse = ({ code, status = 400 }) => ({
+  ok: false,
+  status,
+  json: async () => ({ code, message: 'Refused.' }),
+});
 
 /** Waits until the answers of the fake API are read and the page shows them. */
 const settle = () => new Promise((resolve) => {
@@ -180,7 +204,10 @@ describe('loading the page', () => {
   it('starts a game and draws its board, its column buttons and whose turn it is', async () => {
     await loadPageWithGame(NEW_GAME);
 
-    expect(fetchGame).toHaveBeenCalledExactlyOnceWith(GAME_ROUTE, { method: 'POST' });
+    expect(fetchGame).toHaveBeenCalledExactlyOnceWith(GAME_ROUTE, {
+      method: 'POST',
+      signal: expect.any(AbortSignal),
+    });
     expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
     expect(getPickerAttributes('tabindex')).toEqual(TAB_INDEXES_BY_FOCUSED_COLUMN[0]);
     expect(getPickerAttributes('aria-disabled')).toEqual(['false', 'false', 'false']);
@@ -265,6 +292,7 @@ describe('playing a move', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ playerId: 'red', column: 1 }),
+      signal: expect.any(AbortSignal),
     });
     expect(getCellClassNames()[RED_TOKEN_CELL_INDEX]).toBe(`${CELL_CLASS_NAME} red-token`);
     expect(getText(SELECTORS.status)).toBe(getStatusText(GAME_AFTER_RED_MOVE));
@@ -283,16 +311,12 @@ describe('playing a move', () => {
 
   it('shows the French text of the code of a move that the server refuses', async () => {
     await loadPageWithGame(NEW_GAME);
-    fetchGame.mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      json: async () => ({ code: 'not_your_turn', message: "red: it's not your turn!" }),
-    });
+    fetchGame.mockResolvedValueOnce(refusalResponse({ code: 'invalid_move' }));
 
     getPickers()[0].click();
     await settle();
 
-    expect(getText(SELECTORS.message)).toBe(ERROR_MESSAGES_BY_CODE.not_your_turn);
+    expect(getText(SELECTORS.message)).toBe(ERROR_MESSAGES_BY_CODE.invalid_move);
     expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
   });
 });
@@ -376,19 +400,19 @@ describe('sending one request at a time', () => {
 
     getPickers()[0].click();
     getPickers()[1].click();
-    clickNewGame();
 
     expect(fetchGame).toHaveBeenCalledTimes(2);
     moveAnswer.resolve(gameResponse(GAME_AFTER_RED_MOVE));
     await settle();
-    fetchGame.mockResolvedValueOnce(gameResponse(NEW_GAME));
-    clickNewGame();
+    fetchGame.mockResolvedValueOnce(gameResponse(WON_GAME));
+    getPickers()[1].click();
     await settle();
     expect(fetchGame).toHaveBeenCalledTimes(3);
   });
 
   it('accepts a new request once a request failed', async () => {
     await loadPageWithGame(NEW_GAME);
+    fetchGame.mockRejectedValueOnce(new TypeError('Failed to fetch'));
     fetchGame.mockRejectedValueOnce(new TypeError('Failed to fetch'));
 
     getPickers()[0].click();
@@ -398,7 +422,7 @@ describe('sending one request at a time', () => {
     fetchGame.mockResolvedValueOnce(gameResponse(GAME_AFTER_RED_MOVE));
     getPickers()[0].click();
     await settle();
-    expect(fetchGame).toHaveBeenCalledTimes(3);
+    expect(fetchGame).toHaveBeenCalledTimes(4);
     expect(getText(SELECTORS.message)).toBe('');
   });
 });
@@ -413,10 +437,295 @@ describe('starting a new game', () => {
     clickNewGame();
     await settle();
 
-    expect(fetchGame).toHaveBeenLastCalledWith(GAME_ROUTE, { method: 'POST' });
+    expect(fetchGame).toHaveBeenLastCalledWith(GAME_ROUTE, {
+      method: 'POST',
+      signal: expect.any(AbortSignal),
+    });
     expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
     expect(getPickerAttributes('aria-disabled')).toEqual(['false', 'false', 'false']);
     expect(getText(SELECTORS.status)).toBe(getStatusText(NEW_GAME));
     expect(getText(SELECTORS.message)).toBe('');
+  });
+});
+
+describe('resynchronizing with the server', () => {
+  it('shows the board and the turn of the server after a lost answer, then plays', async () => {
+    await loadPageWithGame(NEW_GAME);
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+    fetchGame.mockResolvedValueOnce(gameResponse(GAME_AFTER_RED_MOVE));
+
+    getPickers()[0].click();
+    await settle();
+
+    expect(fetchGame).toHaveBeenLastCalledWith(getStatusRoute(NEW_GAME.id), {
+      signal: expect.any(AbortSignal),
+    });
+    expect(getCellClassNames()).toEqual(BOARD_AFTER_RED_MOVE);
+    expect(getText(SELECTORS.status)).toBe(getStatusText(GAME_AFTER_RED_MOVE));
+    expect(getText(SELECTORS.message)).toBe('');
+
+    fetchGame.mockResolvedValueOnce(gameResponse(WON_GAME));
+    getPickers()[1].click();
+    await settle();
+
+    expect(fetchGame).toHaveBeenLastCalledWith(getPlayRoute(NEW_GAME.id), expect.objectContaining({
+      body: JSON.stringify({ playerId: 'yellow', column: 2 }),
+    }));
+    expect(getCellClassNames()).toEqual(WON_BOARD_CLASS_NAMES);
+  });
+
+  it('asks to retry when the server did not get the move', async () => {
+    await loadPageWithGame(NEW_GAME);
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+    fetchGame.mockResolvedValueOnce(gameResponse(NEW_GAME));
+
+    getPickers()[0].click();
+    await settle();
+
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+    expect(getText(SELECTORS.message)).toBe(CONNECTION_ERROR_MESSAGE);
+  });
+
+  it.each(['not_your_turn', 'column_full'])(
+    'refreshes the board and the turn after a refused %s, and explains it',
+    async (code) => {
+      await loadPageWithGame(NEW_GAME);
+      fetchGame.mockResolvedValueOnce(refusalResponse({ code }));
+      fetchGame.mockResolvedValueOnce(gameResponse(GAME_AFTER_RED_MOVE));
+
+      getPickers()[0].click();
+      await settle();
+
+      expect(getCellClassNames()).toEqual(BOARD_AFTER_RED_MOVE);
+      expect(getText(SELECTORS.status)).toBe(getStatusText(GAME_AFTER_RED_MOVE));
+      expect(getText(SELECTORS.message)).toBe(ERROR_MESSAGES_BY_CODE[code]);
+    },
+  );
+
+  it.each([
+    ['a lost answer', () => fetchGame.mockRejectedValueOnce(lostAnswer)],
+    [
+      'a stale refusal',
+      () => fetchGame.mockResolvedValueOnce(refusalResponse({ code: 'not_your_turn' })),
+    ],
+  ])('leaves the board as it was when the status read fails after %s', async (name, failMove) => {
+    await loadPageWithGame(NEW_GAME);
+    failMove();
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+
+    getPickers()[0].click();
+    await settle();
+
+    expect(fetchGame).toHaveBeenCalledTimes(3);
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+    expect(getText(SELECTORS.status)).toBe(getStatusText(NEW_GAME));
+    expect(getText(SELECTORS.message)).toBe(CONNECTION_ERROR_MESSAGE);
+  });
+
+  it('keeps the board and says so when the game no longer exists', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+    fetchGame.mockResolvedValueOnce(refusalResponse({ code: 'game_not_found', status: 404 }));
+
+    getPickers()[1].click();
+    await settle();
+
+    expect(getCellClassNames()).toEqual(BOARD_AFTER_RED_MOVE);
+    expect(getText(SELECTORS.status)).toBe(getStatusText(GAME_AFTER_RED_MOVE));
+    expect(getText(SELECTORS.message)).toBe(GAME_NOT_FOUND_MESSAGE);
+  });
+
+  it('ignores a click while the status read waits, so no move leaves a stale board', async () => {
+    await loadPageWithGame(NEW_GAME);
+    const statusAnswer = Promise.withResolvers();
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+    fetchGame.mockReturnValueOnce(statusAnswer.promise);
+
+    getPickers()[0].click();
+    await settle();
+    getPickers()[1].click();
+    await settle();
+
+    expect(fetchGame).toHaveBeenCalledTimes(3);
+    statusAnswer.resolve(gameResponse(GAME_AFTER_RED_MOVE));
+    await settle();
+    expect(getCellClassNames()).toEqual(BOARD_AFTER_RED_MOVE);
+  });
+
+  it('ends a request that gets no answer with a message', async () => {
+    const timeoutController = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeoutController.signal);
+    await loadPageWithGame(NEW_GAME);
+    const waitForTimeout = (route, { signal }) => new Promise((resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason));
+    });
+    fetchGame.mockImplementationOnce(waitForTimeout);
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+
+    getPickers()[0].click();
+    await settle();
+    expect(getText(SELECTORS.message)).toBe('');
+
+    timeoutController.abort(new DOMException('Timed out.', 'TimeoutError'));
+    await settle();
+    timeout.mockRestore();
+
+    expect(getText(SELECTORS.message)).toBe(CONNECTION_ERROR_MESSAGE);
+  });
+});
+
+describe('starting a new game while a request waits', () => {
+  it('shows the new game at once, and ignores the late answer of the move', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const moveAnswer = Promise.withResolvers();
+    fetchGame.mockReturnValueOnce(moveAnswer.promise);
+    fetchGame.mockResolvedValueOnce(gameResponse(REPLACING_GAME));
+
+    getPickers()[1].click();
+    clickNewGame();
+    await settle();
+
+    expect(fetchGame).toHaveBeenLastCalledWith(GAME_ROUTE, expect.objectContaining({
+      method: 'POST',
+    }));
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+
+    moveAnswer.resolve(gameResponse(WON_GAME));
+    await settle();
+
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+    expect(getText(SELECTORS.status)).toBe(getStatusText(REPLACING_GAME));
+  });
+
+  it('ignores a late refusal of the move', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const moveAnswer = Promise.withResolvers();
+    fetchGame.mockReturnValueOnce(moveAnswer.promise);
+    fetchGame.mockResolvedValueOnce(gameResponse(REPLACING_GAME));
+
+    getPickers()[1].click();
+    clickNewGame();
+    await settle();
+    moveAnswer.resolve(refusalResponse({ code: 'invalid_move' }));
+    await settle();
+
+    expect(getText(SELECTORS.message)).toBe('');
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+    expect(fetchGame).toHaveBeenCalledTimes(3);
+  });
+
+  it('ignores the late failure of the status read of a replaced move', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const statusAnswer = Promise.withResolvers();
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+    fetchGame.mockReturnValueOnce(statusAnswer.promise);
+    fetchGame.mockResolvedValueOnce(gameResponse(REPLACING_GAME));
+
+    getPickers()[1].click();
+    await settle();
+    clickNewGame();
+    await settle();
+    statusAnswer.reject(lostAnswer);
+    await settle();
+
+    expect(getText(SELECTORS.message)).toBe('');
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+  });
+
+  it('ignores the late game of the status read of a replaced move', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const statusAnswer = Promise.withResolvers();
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+    fetchGame.mockReturnValueOnce(statusAnswer.promise);
+    fetchGame.mockResolvedValueOnce(gameResponse(REPLACING_GAME));
+
+    getPickers()[1].click();
+    await settle();
+    clickNewGame();
+    await settle();
+    statusAnswer.resolve(gameResponse(WON_GAME));
+    await settle();
+
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+    expect(getText(SELECTORS.status)).toBe(getStatusText(REPLACING_GAME));
+  });
+
+  it('plays the next move in the new game', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    fetchGame.mockReturnValueOnce(Promise.withResolvers().promise);
+    fetchGame.mockResolvedValueOnce(gameResponse(REPLACING_GAME));
+    getPickers()[1].click();
+    clickNewGame();
+    await settle();
+    fetchGame.mockResolvedValueOnce(gameResponse(GAME_AFTER_RED_MOVE));
+
+    getPickers()[0].click();
+    await settle();
+
+    expect(fetchGame).toHaveBeenLastCalledWith(
+      getPlayRoute(REPLACING_GAME.id),
+      expect.objectContaining({ body: JSON.stringify({ playerId: 'red', column: 1 }) }),
+    );
+  });
+
+  it('keeps the new game waiting when the answer of the old move arrives', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const moveAnswer = Promise.withResolvers();
+    const startAnswer = Promise.withResolvers();
+    fetchGame.mockReturnValueOnce(moveAnswer.promise);
+    fetchGame.mockReturnValueOnce(startAnswer.promise);
+
+    getPickers()[1].click();
+    clickNewGame();
+    moveAnswer.resolve(gameResponse(WON_GAME));
+    await settle();
+    getPickers()[1].click();
+    await settle();
+
+    expect(fetchGame).toHaveBeenCalledTimes(3);
+    startAnswer.resolve(gameResponse(REPLACING_GAME));
+    await settle();
+    expect(getText(SELECTORS.status)).toBe(getStatusText(REPLACING_GAME));
+  });
+
+  it('shows the error of a new game that fails, on the board of the old game', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    fetchGame.mockReturnValueOnce(Promise.withResolvers().promise);
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+
+    getPickers()[1].click();
+    clickNewGame();
+    await settle();
+
+    expect(getText(SELECTORS.message)).toBe(CONNECTION_ERROR_MESSAGE);
+    expect(getText(SELECTORS.status)).toBe(getStatusText(GAME_AFTER_RED_MOVE));
+  });
+
+  it('drops a second click on the button while a new game starts', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const startAnswer = Promise.withResolvers();
+    fetchGame.mockReturnValueOnce(startAnswer.promise);
+
+    clickNewGame();
+    clickNewGame();
+
+    expect(fetchGame).toHaveBeenCalledTimes(2);
+    startAnswer.resolve(gameResponse(REPLACING_GAME));
+    await settle();
+    expect(getText(SELECTORS.status)).toBe(getStatusText(REPLACING_GAME));
+  });
+
+  it('drops a click on a column while a new game starts', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const startAnswer = Promise.withResolvers();
+    fetchGame.mockReturnValueOnce(startAnswer.promise);
+
+    clickNewGame();
+    getPickers()[1].click();
+
+    expect(fetchGame).toHaveBeenCalledTimes(2);
+    startAnswer.resolve(gameResponse(REPLACING_GAME));
+    await settle();
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
   });
 });

@@ -1,11 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import {
+  describe, it, expect, vi,
+} from 'vitest';
 import { ERROR_CODES } from '../app/constants.js';
 import {
-  getErrorCode, getErrorMessage, getPlayRoute, requestGame,
+  getErrorCode, getErrorMessage, getPlayRoute, getStatusRoute, requestGame, requestMove,
 } from './api.js';
 import {
   CONNECTION_ERROR_MESSAGE, ERROR_MESSAGES_BY_CODE, GAME_NOT_FOUND_MESSAGE, MOVE_REFUSED_MESSAGE,
-  SERVER_ERROR_MESSAGE, TOO_MANY_STARTS_MESSAGE,
+  REQUEST_TIMEOUT_MS, SERVER_ERROR_MESSAGE, TOO_MANY_STARTS_MESSAGE,
 } from './constants.js';
 
 /** A game status of the API, being played on a board of 1 row and 2 columns. */
@@ -17,6 +19,9 @@ const GAME = {
   state: 'playing',
   board: [['red', 0]],
 };
+
+/** The game once yellow played after `GAME`: the server knows a move that `GAME` lacks. */
+const NEXT_GAME = { ...GAME, lastPlayerWhoPlayed: 'yellow', board: [['red', 'yellow']] };
 
 /**
  * Builds a fake `fetch` that answers every request with the same response.
@@ -31,6 +36,16 @@ const fakeFetch = ({ status, json }) => async () => ({
   json,
 });
 
+/**
+ * A fake `fetch` that gets no answer, and fails as `fetch` does once its signal aborts.
+ * @param {string} route - The path of the request.
+ * @param {RequestInit} init - The options of the request, with its signal.
+ * @returns {Promise<never>} A promise that rejects with the reason of the signal.
+ */
+const neverAnswer = (route, { signal }) => new Promise((resolve, reject) => {
+  signal.addEventListener('abort', () => reject(signal.reason));
+});
+
 describe('ERROR_MESSAGES_BY_CODE', () => {
   it('explains every error code of the API, and no other', () => {
     expect(Object.keys(ERROR_MESSAGES_BY_CODE).sort()).toEqual(Object.values(ERROR_CODES).sort());
@@ -41,9 +56,9 @@ describe('ERROR_MESSAGES_BY_CODE', () => {
       invalid_player: 'Joueur inconnu du serveur : rechargez la page.',
       invalid_column: 'Cette colonne n’existe pas : rechargez la page.',
       game_over: 'La partie est terminée : lancez une nouvelle partie.',
-      not_your_turn: 'Ce n’est pas le tour de ce joueur : rechargez la page.',
+      not_your_turn: 'Ce n’est pas le tour de ce joueur : le plateau est à jour.',
       no_token_left: 'Ce joueur n’a plus de jeton : lancez une nouvelle partie.',
-      column_full: 'Cette colonne est pleine : rechargez la page.',
+      column_full: 'Cette colonne est pleine : le plateau est à jour.',
       invalid_move: 'Coup illisible pour le serveur : rechargez la page.',
       invalid_json: 'Coup illisible pour le serveur : rechargez la page.',
       body_too_large: 'Requête trop volumineuse pour le serveur : rechargez la page.',
@@ -117,6 +132,16 @@ describe('getPlayRoute', () => {
   });
 });
 
+describe('getStatusRoute', () => {
+  it('builds the status route of a game', () => {
+    expect(getStatusRoute('abc')).toBe('/game/abc/status');
+  });
+
+  it('encodes an id that holds a slash or a space', () => {
+    expect(getStatusRoute('a/b c')).toBe('/game/a%2Fb%20c/status');
+  });
+});
+
 describe('requestGame', () => {
   const route = '/game';
 
@@ -126,7 +151,7 @@ describe('requestGame', () => {
     expect(await requestGame({ route, fetchGame })).toEqual({ game: GAME });
   });
 
-  it('passes the route and the options to fetch', async () => {
+  it('passes the route, the options and a timeout signal to fetch', async () => {
     const calls = [];
     const init = { method: 'POST' };
     const fetchGame = async (...args) => {
@@ -136,21 +161,96 @@ describe('requestGame', () => {
 
     await requestGame({ route, init, fetchGame });
 
-    expect(calls).toEqual([[route, init]]);
+    expect(calls).toEqual([[route, { ...init, signal: expect.any(AbortSignal) }]]);
+  });
+
+  it('sends a request without options, with its timeout signal alone', async () => {
+    const fetchGame = vi.fn(fakeFetch({ status: 200, json: async () => GAME }));
+
+    await requestGame({ route, fetchGame });
+
+    expect(fetchGame).toHaveBeenCalledExactlyOnceWith(route, {
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('waits for an answer for the time of REQUEST_TIMEOUT_MS by default', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+
+    await requestGame({ route, fetchGame: fakeFetch({ status: 200, json: async () => GAME }) });
+
+    expect(timeout).toHaveBeenCalledExactlyOnceWith(REQUEST_TIMEOUT_MS);
+    timeout.mockRestore();
+  });
+
+  it('explains a request that gets no answer as a connection error', async () => {
+    expect(await requestGame({ route, fetchGame: neverAnswer, timeoutMs: 1 }))
+      .toEqual({ error: CONNECTION_ERROR_MESSAGE, isAnswerLost: true });
+  });
+
+  it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])(
+    'explains a timeout of %s that the browser refuses as a connection error',
+    async (timeoutMs) => {
+      const fetchGame = fakeFetch({ status: 200, json: async () => GAME });
+
+      expect(await requestGame({ route, fetchGame, timeoutMs }))
+        .toEqual({ error: CONNECTION_ERROR_MESSAGE, isAnswerLost: true });
+    },
+  );
+
+  it('explains a browser without timeouts as a connection error', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockImplementation(() => {
+      throw new TypeError('AbortSignal.timeout is not a function');
+    });
+
+    const answer = await requestGame({
+      route, fetchGame: fakeFetch({ status: 200, json: async () => GAME }),
+    });
+
+    timeout.mockRestore();
+    expect(answer).toEqual({ error: CONNECTION_ERROR_MESSAGE, isAnswerLost: true });
+  });
+
+  it('explains a response whose body never ends as a connection error', async () => {
+    const fetchGame = async (requestRoute, { signal }) => ({
+      ok: true,
+      status: 200,
+      json: () => neverAnswer(requestRoute, { signal }),
+    });
+
+    expect(await requestGame({ route, fetchGame, timeoutMs: 1 }))
+      .toEqual({ error: CONNECTION_ERROR_MESSAGE, isAnswerLost: true });
   });
 
   it('explains a refused move by the code of its body', async () => {
     const json = async () => ({ code: 'not_your_turn', message: "red: it's not your turn!" });
 
     expect(await requestGame({ route, fetchGame: fakeFetch({ status: 400, json }) }))
-      .toEqual({ error: ERROR_MESSAGES_BY_CODE.not_your_turn });
+      .toEqual({ error: ERROR_MESSAGES_BY_CODE.not_your_turn, isStaleRefusal: true });
   });
+
+  it('calls a refused column_full a stale refusal, as not_your_turn', async () => {
+    const json = async () => ({ code: 'column_full', message: 'The column 1 is full!' });
+
+    expect(await requestGame({ route, fetchGame: fakeFetch({ status: 400, json }) }))
+      .toEqual({ error: ERROR_MESSAGES_BY_CODE.column_full, isStaleRefusal: true });
+  });
+
+  it.each(['game_over', 'no_token_left', 'invalid_move', 'game_not_found'])(
+    'does not call a refused %s a stale refusal',
+    async (code) => {
+      const json = async () => ({ code, message: 'Refused.' });
+
+      expect(await requestGame({ route, fetchGame: fakeFetch({ status: 400, json }) }))
+        .toEqual({ error: ERROR_MESSAGES_BY_CODE[code], isStaleRefusal: false });
+    },
+  );
 
   it('explains a refused move with an unknown code by the generic text', async () => {
     const json = async () => ({ code: 'teapot', message: 'Refused.' });
 
     expect(await requestGame({ route, fetchGame: fakeFetch({ status: 400, json }) }))
-      .toEqual({ error: MOVE_REFUSED_MESSAGE });
+      .toEqual({ error: MOVE_REFUSED_MESSAGE, isStaleRefusal: false });
   });
 
   it('explains a refused move whose body is missing or not JSON by the generic text', async () => {
@@ -165,20 +265,23 @@ describe('requestGame', () => {
       route, fetchGame: fakeFetch({ status: 400, json }),
     })));
 
-    expect(results).toEqual([{ error: MOVE_REFUSED_MESSAGE }, { error: MOVE_REFUSED_MESSAGE }]);
+    expect(results).toEqual([
+      { error: MOVE_REFUSED_MESSAGE, isStaleRefusal: false },
+      { error: MOVE_REFUSED_MESSAGE, isStaleRefusal: false },
+    ]);
   });
 
   it('explains an error response without a code by its status', async () => {
     const json = async () => ({ message: 'The column 1 is full!' });
 
     expect(await requestGame({ route, fetchGame: fakeFetch({ status: 400, json }) }))
-      .toEqual({ error: MOVE_REFUSED_MESSAGE });
+      .toEqual({ error: MOVE_REFUSED_MESSAGE, isStaleRefusal: false });
     expect(await requestGame({ route, fetchGame: fakeFetch({ status: 404, json }) }))
-      .toEqual({ error: GAME_NOT_FOUND_MESSAGE });
+      .toEqual({ error: GAME_NOT_FOUND_MESSAGE, isStaleRefusal: false });
     expect(await requestGame({ route, fetchGame: fakeFetch({ status: 429, json }) }))
-      .toEqual({ error: TOO_MANY_STARTS_MESSAGE });
+      .toEqual({ error: TOO_MANY_STARTS_MESSAGE, isStaleRefusal: false });
     expect(await requestGame({ route, fetchGame: fakeFetch({ status: 500, json }) }))
-      .toEqual({ error: SERVER_ERROR_MESSAGE });
+      .toEqual({ error: SERVER_ERROR_MESSAGE, isStaleRefusal: false });
   });
 
   it('explains a request that does not reach the server', async () => {
@@ -186,7 +289,8 @@ describe('requestGame', () => {
       throw new TypeError('Failed to fetch');
     };
 
-    expect(await requestGame({ route, fetchGame })).toEqual({ error: CONNECTION_ERROR_MESSAGE });
+    expect(await requestGame({ route, fetchGame }))
+      .toEqual({ error: CONNECTION_ERROR_MESSAGE, isAnswerLost: true });
   });
 
   it('explains a successful response that holds no game status', async () => {
@@ -199,6 +303,193 @@ describe('requestGame', () => {
       route, fetchGame: fakeFetch({ status: 200, json }),
     })));
 
-    expect(results).toEqual(bodies.map(() => ({ error: SERVER_ERROR_MESSAGE })));
+    expect(results).toEqual(bodies.map(() => ({
+      error: SERVER_ERROR_MESSAGE,
+      isAnswerLost: true,
+    })));
+  });
+});
+
+describe('requestMove', () => {
+  const init = { method: 'POST', body: '{}' };
+
+  /** The route of the status of `GAME`. */
+  const statusRoute = getStatusRoute(GAME.id);
+
+  /** A fake `fetch` that does not reach the server. */
+  const failToConnect = async () => {
+    throw new TypeError('Failed to fetch');
+  };
+
+  /**
+   * Builds the answers of a successful request.
+   * @param {object} game - The game status of the response.
+   * @returns {typeof fetch} The fake.
+   */
+  const answerGame = (game) => fakeFetch({ status: 200, json: async () => game });
+
+  /**
+   * Builds the answers of a move that the server refuses.
+   * @param {string} code - The code of the body.
+   * @returns {typeof fetch} The fake.
+   */
+  const refuse = (code) => fakeFetch({
+    status: 400,
+    json: async () => ({ code, message: 'Refused.' }),
+  });
+
+  /**
+   * Builds a fake `fetch` that gives each route of a move its own answers.
+   * @param {object} params
+   * @param {typeof fetch} params.onMove - Answers the request of the move.
+   * @param {typeof fetch} [params.onStatus] - Answers the status read.
+   * @returns {import('vitest').Mock} The fake, to read the requests it got.
+   */
+  const fakeRoutes = ({ onMove, onStatus }) => vi.fn(
+    (route, options) => (route === statusRoute ? onStatus : onMove)(route, options),
+  );
+
+  /**
+   * Lists the routes that a fake `fetch` received.
+   * @param {import('vitest').Mock} fetchGame - The fake.
+   * @returns {string[]} The routes, in order.
+   */
+  const getRoutes = (fetchGame) => fetchGame.mock.calls.map(([route]) => route);
+
+  it('returns the answer of a played move, without reading the status', async () => {
+    const fetchGame = fakeRoutes({ onMove: answerGame(NEXT_GAME) });
+
+    expect(await requestMove({ game: GAME, init, fetchGame })).toEqual({ game: NEXT_GAME });
+    expect(fetchGame).toHaveBeenCalledExactlyOnceWith(getPlayRoute(GAME.id), {
+      ...init,
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('reads the status with a plain request after a lost answer', async () => {
+    const fetchGame = fakeRoutes({ onMove: failToConnect, onStatus: answerGame(NEXT_GAME) });
+
+    await requestMove({ game: GAME, init, fetchGame });
+
+    expect(fetchGame).toHaveBeenLastCalledWith(statusRoute, { signal: expect.any(AbortSignal) });
+  });
+
+  it('returns the game of the server, with no error, when the lost move was played', async () => {
+    const fetchGame = fakeRoutes({ onMove: failToConnect, onStatus: answerGame(NEXT_GAME) });
+
+    expect(await requestMove({ game: GAME, init, fetchGame })).toEqual({ game: NEXT_GAME });
+  });
+
+  it('keeps the error when the server did not get the lost move', async () => {
+    const fetchGame = fakeRoutes({ onMove: failToConnect, onStatus: answerGame(GAME) });
+
+    expect(await requestMove({ game: GAME, init, fetchGame }))
+      .toEqual({ game: GAME, error: CONNECTION_ERROR_MESSAGE });
+  });
+
+  it('settles a move that timed out by the status read', async () => {
+    const fetchGame = fakeRoutes({ onMove: neverAnswer, onStatus: answerGame(NEXT_GAME) });
+
+    expect(await requestMove({
+      game: GAME, init, fetchGame, timeoutMs: 1,
+    })).toEqual({ game: NEXT_GAME });
+  });
+
+  it.each([
+    ['not JSON', async () => { throw new SyntaxError('Unexpected end of JSON input'); }],
+    ['no game status', async () => ({})],
+  ])('settles a successful answer whose body is %s by the status read', async (name, json) => {
+    const fetchGame = fakeRoutes({
+      onMove: fakeFetch({ status: 200, json }),
+      onStatus: answerGame(NEXT_GAME),
+    });
+
+    expect(await requestMove({ game: GAME, init, fetchGame })).toEqual({ game: NEXT_GAME });
+  });
+
+  it.each(['not_your_turn', 'column_full'])(
+    'returns the game of the server and the refusal for a refused %s',
+    async (code) => {
+      const fetchGame = fakeRoutes({ onMove: refuse(code), onStatus: answerGame(NEXT_GAME) });
+
+      expect(await requestMove({ game: GAME, init, fetchGame }))
+        .toEqual({ game: NEXT_GAME, error: ERROR_MESSAGES_BY_CODE[code] });
+    },
+  );
+
+  it.each(['game_over', 'no_token_left', 'invalid_move', 'game_not_found'])(
+    'reads no status after a refused %s',
+    async (code) => {
+      const fetchGame = fakeRoutes({ onMove: refuse(code) });
+
+      const answer = await requestMove({ game: GAME, init, fetchGame });
+
+      expect(answer.game).toBeUndefined();
+      expect(answer.error).toBe(ERROR_MESSAGES_BY_CODE[code]);
+      expect(getRoutes(fetchGame)).toEqual([getPlayRoute(GAME.id)]);
+    },
+  );
+
+  it('reads no status after a server failure', async () => {
+    const fetchGame = fakeRoutes({ onMove: fakeFetch({ status: 500, json: async () => null }) });
+
+    const answer = await requestMove({ game: GAME, init, fetchGame });
+
+    expect(answer.game).toBeUndefined();
+    expect(answer.error).toBe(SERVER_ERROR_MESSAGE);
+    expect(getRoutes(fetchGame)).toEqual([getPlayRoute(GAME.id)]);
+  });
+
+  it.each([
+    ['a lost answer', failToConnect],
+    ['a stale refusal', refuse('not_your_turn')],
+  ])('reads the status once after %s, and returns no game when it fails too', async (
+    name,
+    onMove,
+  ) => {
+    const fetchGame = fakeRoutes({ onMove, onStatus: failToConnect });
+
+    const answer = await requestMove({ game: GAME, init, fetchGame });
+
+    expect(answer.game).toBeUndefined();
+    expect(answer.error).toBe(CONNECTION_ERROR_MESSAGE);
+    expect(getRoutes(fetchGame)).toEqual([getPlayRoute(GAME.id), statusRoute]);
+  });
+
+  it('gives the status read the same timeout, and ends with the connection error', async () => {
+    const fetchGame = fakeRoutes({ onMove: neverAnswer, onStatus: neverAnswer });
+
+    const answer = await requestMove({
+      game: GAME, init, fetchGame, timeoutMs: 1,
+    });
+
+    expect(answer.game).toBeUndefined();
+    expect(answer.error).toBe(CONNECTION_ERROR_MESSAGE);
+  });
+
+  it('says that the game no longer exists when the status read answers 404', async () => {
+    const onStatus = fakeFetch({
+      status: 404,
+      json: async () => ({ code: 'game_not_found', message: 'Not found.' }),
+    });
+    const fetchGame = fakeRoutes({ onMove: failToConnect, onStatus });
+
+    const answer = await requestMove({ game: GAME, init, fetchGame });
+
+    expect(answer.game).toBeUndefined();
+    expect(answer.error).toBe(GAME_NOT_FOUND_MESSAGE);
+  });
+
+  it.each([
+    ['fails', fakeFetch({ status: 500, json: async () => null })],
+    ['holds no game status', answerGame({ id: GAME.id })],
+    ['is empty', answerGame(null)],
+  ])('returns no game when the answer of the status read %s', async (name, onStatus) => {
+    const fetchGame = fakeRoutes({ onMove: failToConnect, onStatus });
+
+    const answer = await requestMove({ game: GAME, init, fetchGame });
+
+    expect(answer.game).toBeUndefined();
+    expect(answer.error).toBe(SERVER_ERROR_MESSAGE);
   });
 });
