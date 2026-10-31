@@ -35,6 +35,9 @@ const GAME_WITH_FULL_COLUMN = {
   board: [[0, 'yellow', 0], [0, 'red', 0]],
 };
 
+/** A new game that replaces the one on the page while a request waits. */
+const REPLACING_GAME = { ...NEW_GAME, id: 'replacing-game' };
+
 /** A game that red won with its tokens of the first column: no column can be played. */
 const WON_GAME = {
   ...NEW_GAME,
@@ -397,13 +400,12 @@ describe('sending one request at a time', () => {
 
     getPickers()[0].click();
     getPickers()[1].click();
-    clickNewGame();
 
     expect(fetchGame).toHaveBeenCalledTimes(2);
     moveAnswer.resolve(gameResponse(GAME_AFTER_RED_MOVE));
     await settle();
-    fetchGame.mockResolvedValueOnce(gameResponse(NEW_GAME));
-    clickNewGame();
+    fetchGame.mockResolvedValueOnce(gameResponse(WON_GAME));
+    getPickers()[1].click();
     await settle();
     expect(fetchGame).toHaveBeenCalledTimes(3);
   });
@@ -569,5 +571,161 @@ describe('resynchronizing with the server', () => {
     timeout.mockRestore();
 
     expect(getText(SELECTORS.message)).toBe(CONNECTION_ERROR_MESSAGE);
+  });
+});
+
+describe('starting a new game while a request waits', () => {
+  it('shows the new game at once, and ignores the late answer of the move', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const moveAnswer = Promise.withResolvers();
+    fetchGame.mockReturnValueOnce(moveAnswer.promise);
+    fetchGame.mockResolvedValueOnce(gameResponse(REPLACING_GAME));
+
+    getPickers()[1].click();
+    clickNewGame();
+    await settle();
+
+    expect(fetchGame).toHaveBeenLastCalledWith(GAME_ROUTE, expect.objectContaining({
+      method: 'POST',
+    }));
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+
+    moveAnswer.resolve(gameResponse(WON_GAME));
+    await settle();
+
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+    expect(getText(SELECTORS.status)).toBe(getStatusText(REPLACING_GAME));
+  });
+
+  it('ignores a late refusal of the move', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const moveAnswer = Promise.withResolvers();
+    fetchGame.mockReturnValueOnce(moveAnswer.promise);
+    fetchGame.mockResolvedValueOnce(gameResponse(REPLACING_GAME));
+
+    getPickers()[1].click();
+    clickNewGame();
+    await settle();
+    moveAnswer.resolve(refusalResponse({ code: 'invalid_move' }));
+    await settle();
+
+    expect(getText(SELECTORS.message)).toBe('');
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+    expect(fetchGame).toHaveBeenCalledTimes(3);
+  });
+
+  it('ignores the late failure of the status read of a replaced move', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const statusAnswer = Promise.withResolvers();
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+    fetchGame.mockReturnValueOnce(statusAnswer.promise);
+    fetchGame.mockResolvedValueOnce(gameResponse(REPLACING_GAME));
+
+    getPickers()[1].click();
+    await settle();
+    clickNewGame();
+    await settle();
+    statusAnswer.reject(lostAnswer);
+    await settle();
+
+    expect(getText(SELECTORS.message)).toBe('');
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+  });
+
+  it('ignores the late game of the status read of a replaced move', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const statusAnswer = Promise.withResolvers();
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+    fetchGame.mockReturnValueOnce(statusAnswer.promise);
+    fetchGame.mockResolvedValueOnce(gameResponse(REPLACING_GAME));
+
+    getPickers()[1].click();
+    await settle();
+    clickNewGame();
+    await settle();
+    statusAnswer.resolve(gameResponse(WON_GAME));
+    await settle();
+
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
+    expect(getText(SELECTORS.status)).toBe(getStatusText(REPLACING_GAME));
+  });
+
+  it('plays the next move in the new game', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    fetchGame.mockReturnValueOnce(Promise.withResolvers().promise);
+    fetchGame.mockResolvedValueOnce(gameResponse(REPLACING_GAME));
+    getPickers()[1].click();
+    clickNewGame();
+    await settle();
+    fetchGame.mockResolvedValueOnce(gameResponse(GAME_AFTER_RED_MOVE));
+
+    getPickers()[0].click();
+    await settle();
+
+    expect(fetchGame).toHaveBeenLastCalledWith(
+      getPlayRoute(REPLACING_GAME.id),
+      expect.objectContaining({ body: JSON.stringify({ playerId: 'red', column: 1 }) }),
+    );
+  });
+
+  it('keeps the new game waiting when the answer of the old move arrives', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const moveAnswer = Promise.withResolvers();
+    const startAnswer = Promise.withResolvers();
+    fetchGame.mockReturnValueOnce(moveAnswer.promise);
+    fetchGame.mockReturnValueOnce(startAnswer.promise);
+
+    getPickers()[1].click();
+    clickNewGame();
+    moveAnswer.resolve(gameResponse(WON_GAME));
+    await settle();
+    getPickers()[1].click();
+    await settle();
+
+    expect(fetchGame).toHaveBeenCalledTimes(3);
+    startAnswer.resolve(gameResponse(REPLACING_GAME));
+    await settle();
+    expect(getText(SELECTORS.status)).toBe(getStatusText(REPLACING_GAME));
+  });
+
+  it('shows the error of a new game that fails, on the board of the old game', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    fetchGame.mockReturnValueOnce(Promise.withResolvers().promise);
+    fetchGame.mockRejectedValueOnce(lostAnswer);
+
+    getPickers()[1].click();
+    clickNewGame();
+    await settle();
+
+    expect(getText(SELECTORS.message)).toBe(CONNECTION_ERROR_MESSAGE);
+    expect(getText(SELECTORS.status)).toBe(getStatusText(GAME_AFTER_RED_MOVE));
+  });
+
+  it('drops a second click on the button while a new game starts', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const startAnswer = Promise.withResolvers();
+    fetchGame.mockReturnValueOnce(startAnswer.promise);
+
+    clickNewGame();
+    clickNewGame();
+
+    expect(fetchGame).toHaveBeenCalledTimes(2);
+    startAnswer.resolve(gameResponse(REPLACING_GAME));
+    await settle();
+    expect(getText(SELECTORS.status)).toBe(getStatusText(REPLACING_GAME));
+  });
+
+  it('drops a click on a column while a new game starts', async () => {
+    await loadPageWithGame(GAME_AFTER_RED_MOVE);
+    const startAnswer = Promise.withResolvers();
+    fetchGame.mockReturnValueOnce(startAnswer.promise);
+
+    clickNewGame();
+    getPickers()[1].click();
+
+    expect(fetchGame).toHaveBeenCalledTimes(2);
+    startAnswer.resolve(gameResponse(REPLACING_GAME));
+    await settle();
+    expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
   });
 });

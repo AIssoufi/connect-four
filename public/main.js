@@ -9,8 +9,12 @@ import { getWinningCells } from './winning-cells.js';
 /** The game status shown on the page, `undefined` until a game starts. */
 let currentGame;
 
-/** Whether a request to the API waits for its answer: the page sends one at a time. */
-let isRequestPending = false;
+/**
+ * The request that the page waits for, `null` when there is none. The page sends one at a time,
+ * and this object tells a replaced request from the current one.
+ * @type {{ isNewGame: boolean } | null}
+ */
+let pendingRequest = null;
 
 /**
  * Writes a text in an element of the page, unless it already shows it, so that a live region
@@ -39,20 +43,30 @@ const updateGame = (game) => {
 
 /**
  * Sends a request that may return a game status, then shows the game, when there is one, and the
- * message of the answer, or none. A request sent while another one waits is dropped.
+ * message of the answer, or none. A move sent while another request waits is dropped, and so is a
+ * new game sent while a new game starts. A new game replaces a move that waits: the late answer
+ * of that move is ignored, so it can never overwrite the new game.
  * @param {object} params
  * @param {() => Promise<{ game?: object, error?: string }>} params.sendRequest - Sends the
  *   request, a move and the status read that may follow it being one request.
+ * @param {boolean} [params.isNewGame] - Whether the request starts a new game.
  */
-const sendGameRequest = async ({ sendRequest }) => {
-  if (isRequestPending) {
+const sendGameRequest = async ({ sendRequest, isNewGame = false }) => {
+  const isDropped = isNewGame ? pendingRequest?.isNewGame : pendingRequest !== null;
+  if (isDropped) {
     return;
   }
 
-  isRequestPending = true;
+  const request = { isNewGame };
+  pendingRequest = request;
   const { game, error } = await sendRequest();
-  isRequestPending = false;
 
+  const isReplaced = pendingRequest !== request;
+  if (isReplaced) {
+    return;
+  }
+
+  pendingRequest = null;
   showText({ selector: SELECTORS.message, text: error ?? '' });
   if (game) {
     updateGame(game);
@@ -65,6 +79,7 @@ const sendGameRequest = async ({ sendRequest }) => {
  * polling.
  */
 const startGame = () => sendGameRequest({
+  isNewGame: true,
   sendRequest: () => requestGame({ route: GAME_ROUTE, init: { method: 'POST' } }),
 });
 

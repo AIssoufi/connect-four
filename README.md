@@ -20,6 +20,12 @@ shows why a move cannot be played, such as a full column, whose circle is grayed
 that is over. Each visitor plays their own game: the Nouvelle partie button, or reloading the
 page, starts a new one.
 
+When a request fails, the page stays in step with the server:
+
+- A request with no answer stops after 10 seconds, and Nouvelle partie works meanwhile.
+- After a lost answer or an out-of-date refusal, one read shows the server's board and turn.
+- If that read fails too, the board stays as it was, with a message.
+
 The page can also be played on a phone, with the keyboard alone and with a screen reader:
 
 - It fits a phone screen of 375 px wide.
