@@ -1,10 +1,10 @@
 import {
-  CELL_LABEL, COLUMN_LABEL, DRAW_TEXT, EMPTY_CELL_NAME, FULL_COLUMN_LABEL, FULL_COLUMN_MESSAGE,
-  GAME_OVER_MESSAGE, GAME_STATES, PAGE_LOCALE, TURN_TEXT, WIN_TEXT, WIN_WITH_CELLS_TEXT,
-  WINNING_CELL_LABEL, WINNING_CELL_NAME,
+  DRAW_TEXT, EMPTY_CELL, FULL_COLUMN_MESSAGE, GAME_OVER_MESSAGE, GAME_STATES, MOVE_TEXT,
+  PAGE_LOCALE, TURN_TEXT, WIN_TEXT, WIN_WITH_CELLS_TEXT, WINNING_CELL_NAME,
 } from './constants.js';
 import {
-  getNextPlayer, getPlayerColorName, getPositionNumber, hasOwnKey, isColumnFull, isGameOver,
+  getNextPlayer, getPlayerColorName, getPositionNumber, hasOwnKey, isBoardSize, isColumnFull,
+  isDrawableBoard, isGameOver,
 } from './utils.js';
 import { getWinningCells } from './winning-cells.js';
 
@@ -13,6 +13,9 @@ const PLACEHOLDER_PATTERN = /\{(\w+)\}/g;
 
 /** Joins the items of a list as the page language writes them, such as `a, b et c`. */
 const LIST_FORMAT = new Intl.ListFormat(PAGE_LOCALE, { style: 'long', type: 'conjunction' });
+
+/** What separates two sentences of a text. */
+const SENTENCE_SEPARATOR = ' ';
 
 /**
  * Writes a text from its template, so that the page copy stays in `constants.js`.
@@ -91,16 +94,73 @@ export const getStatusText = (game) => {
 };
 
 /**
- * Builds the name of a column of the control panel, which says when the column is full.
+ * Lists the tokens of a board that sit on a cell the previous board left empty.
  * @param {object} params
- * @param {number} params.columnIndex - The index of the column, from 0 for the left one.
- * @param {boolean} params.isFull - Whether the column has no free cell left.
- * @returns {string} The name, with the column numbered from 1.
- * @example getColumnLabel({ columnIndex: 2, isFull: true }) // 'Colonne 3 pleine'
+ * @param {Array<Array<string|number>>} [params.previousBoard] - The board shown before, top row
+ *   first, missing before the first game.
+ * @param {Array<Array<string|number>>} params.board - The new board, top row first.
+ * @returns {Array<{ rowIndex: number, columnIndex: number, token: string }>} The new tokens, top
+ *   row first, none when the two boards do not have the same size.
  */
-export const getColumnLabel = ({ columnIndex, isFull }) => {
-  const template = isFull ? FULL_COLUMN_LABEL : COLUMN_LABEL;
-  return fillText({ template, values: { number: getPositionNumber(columnIndex) } });
+const findNewTokens = ({ previousBoard, board }) => {
+  const isComparable = isDrawableBoard(previousBoard) && isBoardSize({
+    board, rowCount: previousBoard.length, columnCount: previousBoard[0].length,
+  });
+  if (!isComparable) {
+    return [];
+  }
+
+  return board.flatMap((row, rowIndex) => row.flatMap((token, columnIndex) => {
+    const wasEmpty = previousBoard[rowIndex][columnIndex] === EMPTY_CELL;
+    const isPlayerToken = getPlayerColorName(token) !== null;
+    return wasEmpty && isPlayerToken ? [{ rowIndex, columnIndex, token }] : [];
+  }));
+};
+
+/**
+ * Writes the move that turned a board into the next one, so that a screen reader says where the
+ * token landed.
+ * @param {object} params
+ * @param {Array<Array<string|number>>} [params.previousBoard] - The board shown before, top row
+ *   first, missing before the first game.
+ * @param {Array<Array<string|number>>} params.board - The new board, top row first.
+ * @returns {string} The text, with the column and the row numbered from 1, or an empty text unless
+ *   exactly one token appeared: an unchanged board, a new game, or boards of two different games.
+ * @example getMoveText({ previousBoard: [[0, 0]], board: [[0, 'red']] })
+ *   // 'Rouge a joué colonne 2, ligne 1.'
+ */
+export const getMoveText = ({ previousBoard, board }) => {
+  const newTokens = findNewTokens({ previousBoard, board });
+  if (newTokens.length !== 1) {
+    return '';
+  }
+
+  const [{ rowIndex, columnIndex, token }] = newTokens;
+  return fillText({
+    template: MOVE_TEXT,
+    values: {
+      color: capitalize(getPlayerColorName(token)),
+      column: getPositionNumber(columnIndex),
+      row: getPositionNumber(rowIndex),
+    },
+  });
+};
+
+/**
+ * Writes the status of a game after the move that led to it, for the live region of the page,
+ * which announces each new text once.
+ * @param {object} params
+ * @param {Array<Array<string|number>>} [params.previousBoard] - The board shown before, top row
+ *   first, missing before the first game.
+ * @param {object} params.game - The new game status.
+ * @returns {string} The move, when there is one, then the text of `getStatusText`.
+ * @example getStatusWithMoveText({ previousBoard, game })
+ *   // 'Rouge a joué colonne 4, ligne 6. Au tour de jaune.'
+ */
+export const getStatusWithMoveText = ({ previousBoard, game }) => {
+  const texts = [getMoveText({ previousBoard, board: game?.board }), getStatusText(game)];
+  const isWritten = (text) => text !== '';
+  return texts.filter(isWritten).join(SENTENCE_SEPARATOR);
 };
 
 /**
@@ -124,36 +184,4 @@ export const getMoveRefusal = ({ game, columnIndex }) => {
   }
 
   return null;
-};
-
-/**
- * Builds the text that a screen reader reads for a cell of the board.
- * @param {object} params
- * @param {number} params.rowIndex - The index of the row, from 0 for the top one.
- * @param {number} params.columnIndex - The index of the column, from 0 for the left one.
- * @param {string|number} params.token - The cell value: a player id, or `0` when empty.
- * @param {boolean} [params.isWinning] - Whether the cell belongs to the line that won.
- * @returns {string} The row and the column, numbered from 1, then the color of the token, and
- *   that it is a winning token when `isWinning` is `true` for a token of a player. A value that
- *   is no known player reads as an empty cell, as the board draws it, and `?` stands for a
- *   missing or invalid row or column.
- * @example getCellLabel({ rowIndex: 2, columnIndex: 1, token: 'red' })
- *   // 'Ligne 3, colonne 2 : rouge'
- * @example getCellLabel({ rowIndex: 2, columnIndex: 0, token: 'red', isWinning: true })
- *   // 'Ligne 3, colonne 1 : rouge, jeton gagnant'
- */
-export const getCellLabel = ({
-  rowIndex, columnIndex, token, isWinning = false,
-}) => {
-  const colorName = getPlayerColorName(token);
-  const isWinningToken = isWinning === true && colorName !== null;
-
-  return fillText({
-    template: isWinningToken ? WINNING_CELL_LABEL : CELL_LABEL,
-    values: {
-      row: getPositionNumber(rowIndex),
-      column: getPositionNumber(columnIndex),
-      content: colorName ?? EMPTY_CELL_NAME,
-    },
-  });
 };

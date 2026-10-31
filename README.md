@@ -26,7 +26,9 @@ The page can also be played on a phone, with the keyboard alone and with a scree
 - Keyboard: Tab reaches the columns, the left and right arrows, Home and End move between them,
   and Enter or Space drops a token.
 - Screen readers announce each column and each cell of the board, such as "Ligne 3, colonne 2 :
-  rouge", and read whose turn it is and the messages as they change.
+  rouge", and read the messages as they change.
+- The status names each move before whose turn it is, such as "Rouge a joué colonne 4, ligne 6. Au
+  tour de jaune.", so a screen reader user hears where each token landed.
 - A dot marks the red tokens and a ring the yellow ones, so they are told apart without color.
 - After a win, a white ring around the tokens shows the line that won, and the status names its
   cells, such as "Rouge a gagné : ligne 3 colonne 1, ligne 4 colonne 1, ligne 5 colonne 1 et
@@ -107,7 +109,7 @@ The site is a [Cloudflare Worker](https://developers.cloudflare.com/workers/), d
   column buttons with `public/board.js`, moves the focus between the columns with
   `public/keyboard.js`, and calls the API through `public/api.js`. These modules import their
   rules from `public/utils.js` and the winning cells from `public/winning-cells.js`, and write
-  their texts with `public/texts.js` from the copy of `public/constants.js`.
+  their texts with `public/texts.js` and `public/labels.js` from the copy of `public/constants.js`.
 - `index.js` runs the Express app of `routes/` on the Worker, with the `nodejs_compat` flag.
 - Each game lives in its own [Durable Object](https://developers.cloudflare.com/durable-objects/)
   (`worker/Game.js`), which saves its moves and plays them again in the engine of `app/` when it
@@ -184,8 +186,8 @@ deployed to least recently.
 
 - the engine (`app/`), the routes (`routes/`) and the storage of the games (`worker/`), with fake
   Durable Objects;
-- the helpers of the page (`public/utils.test.js`, `public/texts.test.js`) and its calls to the
-  API (`public/api.test.js`), with a fake `fetch`;
+- the helpers of the page (`public/utils.test.js`, `public/texts.test.js`,
+  `public/labels.test.js`) and its calls to the API (`public/api.test.js`), with a fake `fetch`;
 - the board and keyboard modules of the page (`public/board.test.js`, `public/keyboard.test.js`),
   in a jsdom document;
 - the page script (`public/main.test.js`), run on the elements of `index.html` in a

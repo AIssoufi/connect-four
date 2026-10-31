@@ -8,7 +8,8 @@ import {
   TAB_INDEX, WINNING_CELL_CLASS_NAME,
 } from './constants.js';
 import { getPlayRoute } from './api.js';
-import { getColumnLabel, getMoveRefusal, getStatusText } from './texts.js';
+import { getColumnLabel } from './labels.js';
+import { getMoveRefusal, getStatusText } from './texts.js';
 
 /** A game that just started, on a board of 2 rows and 3 columns: red plays first. */
 const NEW_GAME = {
@@ -43,6 +44,13 @@ const WON_GAME = {
   state: 'won',
   board: [['red', 'yellow', 0], ['red', 'yellow', 0]],
   winningCells: [{ row: 0, column: 0 }, { row: 1, column: 0 }],
+};
+
+/** `WON_GAME` before the last token of red: red plays next. */
+const GAME_BEFORE_WIN = {
+  ...NEW_GAME,
+  lastPlayerWhoPlayed: 'yellow',
+  board: [[0, 'yellow', 0], ['red', 'yellow', 0]],
 };
 
 /** The class names of the cells of `WON_GAME`, top row first. */
@@ -267,7 +275,32 @@ describe('playing a move', () => {
       body: JSON.stringify({ playerId: 'red', column: 1 }),
     });
     expect(getCellClassNames()[RED_TOKEN_CELL_INDEX]).toBe(`${CELL_CLASS_NAME} red-token`);
-    expect(getText(SELECTORS.status)).toBe(getStatusText(GAME_AFTER_RED_MOVE));
+    expect(getText(SELECTORS.status)).toBe('Rouge a joué colonne 1, ligne 2. Au tour de jaune.');
+  });
+
+  it('announces a win after the move that made it', async () => {
+    await loadPageWithGame(GAME_BEFORE_WIN);
+    fetchGame.mockResolvedValueOnce(gameResponse(WON_GAME));
+
+    getPickers()[0].click();
+    await settle();
+
+    expect(getText(SELECTORS.status))
+      .toBe('Rouge a joué colonne 1, ligne 1. Rouge a gagné : ligne 1 colonne 1 et ligne 2 colonne 1.');
+  });
+
+  it('keeps the announcement when the server refuses the next move', async () => {
+    await loadPageWithGame(NEW_GAME);
+    fetchGame.mockResolvedValueOnce(gameResponse(GAME_AFTER_RED_MOVE));
+    getPickers()[0].click();
+    await settle();
+    fetchGame.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    const statusText = getText(SELECTORS.status);
+
+    getPickers()[0].click();
+    await settle();
+
+    expect(getText(SELECTORS.status)).toBe(statusText);
   });
 
   it('sends no move for a full column and explains why', async () => {
@@ -418,5 +451,18 @@ describe('starting a new game', () => {
     expect(getPickerAttributes('aria-disabled')).toEqual(['false', 'false', 'false']);
     expect(getText(SELECTORS.status)).toBe(getStatusText(NEW_GAME));
     expect(getText(SELECTORS.message)).toBe('');
+  });
+
+  it('announces no move when a new game follows a game in progress', async () => {
+    await loadPageWithGame(NEW_GAME);
+    fetchGame.mockResolvedValueOnce(gameResponse(GAME_AFTER_RED_MOVE));
+    getPickers()[0].click();
+    await settle();
+    fetchGame.mockResolvedValueOnce(gameResponse(NEW_GAME));
+
+    clickNewGame();
+    await settle();
+
+    expect(getText(SELECTORS.status)).toBe('Au tour de rouge.');
   });
 });

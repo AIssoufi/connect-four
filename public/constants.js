@@ -68,6 +68,12 @@ export const CURRENT_PLAYER_CLASS_PREFIX = 'current-player-is-';
 /** The text that says whose turn it is: `{color}` is the name of the player's color. */
 export const TURN_TEXT = 'Au tour de {color}.';
 
+/**
+ * The text that says where the last token landed: `{color}` is the capitalized name of the
+ * player's color, and `{column}` and `{row}` count from 1, from the left and from the top.
+ */
+export const MOVE_TEXT = '{color} a joué colonne {column}, ligne {row}.';
+
 /** The text that says who won: `{color}` is the capitalized name of the winner's color. */
 export const WIN_TEXT = '{color} a gagné.';
 
