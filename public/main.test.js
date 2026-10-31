@@ -180,7 +180,10 @@ describe('loading the page', () => {
   it('starts a game and draws its board, its column buttons and whose turn it is', async () => {
     await loadPageWithGame(NEW_GAME);
 
-    expect(fetchGame).toHaveBeenCalledExactlyOnceWith(GAME_ROUTE, { method: 'POST' });
+    expect(fetchGame).toHaveBeenCalledExactlyOnceWith(GAME_ROUTE, {
+      method: 'POST',
+      signal: expect.any(AbortSignal),
+    });
     expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
     expect(getPickerAttributes('tabindex')).toEqual(TAB_INDEXES_BY_FOCUSED_COLUMN[0]);
     expect(getPickerAttributes('aria-disabled')).toEqual(['false', 'false', 'false']);
@@ -265,6 +268,7 @@ describe('playing a move', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ playerId: 'red', column: 1 }),
+      signal: expect.any(AbortSignal),
     });
     expect(getCellClassNames()[RED_TOKEN_CELL_INDEX]).toBe(`${CELL_CLASS_NAME} red-token`);
     expect(getText(SELECTORS.status)).toBe(getStatusText(GAME_AFTER_RED_MOVE));
@@ -413,7 +417,10 @@ describe('starting a new game', () => {
     clickNewGame();
     await settle();
 
-    expect(fetchGame).toHaveBeenLastCalledWith(GAME_ROUTE, { method: 'POST' });
+    expect(fetchGame).toHaveBeenLastCalledWith(GAME_ROUTE, {
+      method: 'POST',
+      signal: expect.any(AbortSignal),
+    });
     expect(getCellClassNames()).toEqual(EMPTY_BOARD_CLASS_NAMES);
     expect(getPickerAttributes('aria-disabled')).toEqual(['false', 'false', 'false']);
     expect(getText(SELECTORS.status)).toBe(getStatusText(NEW_GAME));

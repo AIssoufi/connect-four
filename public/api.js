@@ -1,6 +1,6 @@
 import {
   CONNECTION_ERROR_MESSAGE, ERROR_MESSAGES_BY_CODE, ERROR_MESSAGES_BY_STATUS, GAME_ROUTE,
-  SERVER_ERROR_MESSAGE,
+  REQUEST_TIMEOUT_MS, SERVER_ERROR_MESSAGE,
 } from './constants.js';
 import { hasOwnKey, isGameStatus } from './utils.js';
 
@@ -66,13 +66,16 @@ export const getPlayRoute = (gameId) => `${GAME_ROUTE}/${encodeURIComponent(game
  * @param {string} params.route - The path of the request, such as `/game`.
  * @param {RequestInit} [params.init] - The method, the headers and the body.
  * @param {typeof fetch} [params.fetchGame] - The function that sends the request.
+ * @param {number} [params.timeoutMs] - How long to wait for the answer, in milliseconds.
  * @returns {Promise<{ game: object } | { error: string }>} The game status, or the message that
  *   explains why there is none. It never rejects.
  */
-export const requestGame = async ({ route, init, fetchGame = fetch }) => {
+export const requestGame = async ({
+  route, init, fetchGame = fetch, timeoutMs = REQUEST_TIMEOUT_MS,
+}) => {
   let response;
   try {
-    response = await fetchGame(route, init);
+    response = await fetchGame(route, { ...init, signal: AbortSignal.timeout(timeoutMs) });
   } catch {
     return { error: CONNECTION_ERROR_MESSAGE };
   }

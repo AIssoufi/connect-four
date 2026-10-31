@@ -1,11 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import {
+  describe, it, expect, vi,
+} from 'vitest';
 import { ERROR_CODES } from '../app/constants.js';
 import {
   getErrorCode, getErrorMessage, getPlayRoute, requestGame,
 } from './api.js';
 import {
   CONNECTION_ERROR_MESSAGE, ERROR_MESSAGES_BY_CODE, GAME_NOT_FOUND_MESSAGE, MOVE_REFUSED_MESSAGE,
-  SERVER_ERROR_MESSAGE, TOO_MANY_STARTS_MESSAGE,
+  REQUEST_TIMEOUT_MS, SERVER_ERROR_MESSAGE, TOO_MANY_STARTS_MESSAGE,
 } from './constants.js';
 
 /** A game status of the API, being played on a board of 1 row and 2 columns. */
@@ -29,6 +31,16 @@ const fakeFetch = ({ status, json }) => async () => ({
   ok: status >= 200 && status < 300,
   status,
   json,
+});
+
+/**
+ * A fake `fetch` that gets no answer, and fails as `fetch` does once its signal aborts.
+ * @param {string} route - The path of the request.
+ * @param {RequestInit} init - The options of the request, with its signal.
+ * @returns {Promise<never>} A promise that rejects with the reason of the signal.
+ */
+const neverAnswer = (route, { signal }) => new Promise((resolve, reject) => {
+  signal.addEventListener('abort', () => reject(signal.reason));
 });
 
 describe('ERROR_MESSAGES_BY_CODE', () => {
@@ -126,7 +138,7 @@ describe('requestGame', () => {
     expect(await requestGame({ route, fetchGame })).toEqual({ game: GAME });
   });
 
-  it('passes the route and the options to fetch', async () => {
+  it('passes the route, the options and a timeout signal to fetch', async () => {
     const calls = [];
     const init = { method: 'POST' };
     const fetchGame = async (...args) => {
@@ -136,7 +148,42 @@ describe('requestGame', () => {
 
     await requestGame({ route, init, fetchGame });
 
-    expect(calls).toEqual([[route, init]]);
+    expect(calls).toEqual([[route, { ...init, signal: expect.any(AbortSignal) }]]);
+  });
+
+  it('sends a request without options, with its timeout signal alone', async () => {
+    const fetchGame = vi.fn(fakeFetch({ status: 200, json: async () => GAME }));
+
+    await requestGame({ route, fetchGame });
+
+    expect(fetchGame).toHaveBeenCalledExactlyOnceWith(route, {
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it('waits for an answer for the time of REQUEST_TIMEOUT_MS by default', async () => {
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+
+    await requestGame({ route, fetchGame: fakeFetch({ status: 200, json: async () => GAME }) });
+
+    expect(timeout).toHaveBeenCalledExactlyOnceWith(REQUEST_TIMEOUT_MS);
+    timeout.mockRestore();
+  });
+
+  it('explains a request that gets no answer as a connection error', async () => {
+    expect(await requestGame({ route, fetchGame: neverAnswer, timeoutMs: 1 }))
+      .toMatchObject({ error: CONNECTION_ERROR_MESSAGE });
+  });
+
+  it('explains a response whose body never ends as a server error', async () => {
+    const fetchGame = async (requestRoute, { signal }) => ({
+      ok: true,
+      status: 200,
+      json: () => neverAnswer(requestRoute, { signal }),
+    });
+
+    expect(await requestGame({ route, fetchGame, timeoutMs: 1 }))
+      .toMatchObject({ error: SERVER_ERROR_MESSAGE });
   });
 
   it('explains a refused move by the code of its body', async () => {

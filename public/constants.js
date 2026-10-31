@@ -44,6 +44,9 @@ export const SELECTORS = {
 /** The route of the API that starts a game, and the prefix of the routes of each game. */
 export const GAME_ROUTE = '/game';
 
+/** How long the page waits for an answer of the API, its body included, in milliseconds. */
+export const REQUEST_TIMEOUT_MS = 10_000;
+
 /** The class name of a row of the board. */
 export const ROW_CLASS_NAME = 'row';
 
