@@ -195,8 +195,8 @@ deployed to least recently.
 - the commit message checks, which call Git.
 
 They need Node.js 22.22.2+, 24.15+ or 26+ (the `engines` field of `package.json`): the versions
-that jsdom supports. `.nvmrc` gives the version used in development and in the CI: 24, an LTS
-release.
+that jsdom supports. `.nvmrc` gives the version used in development and in the CI: 26, the
+Active LTS release.
 
 ## Lint
 
@@ -218,9 +218,9 @@ and on `master` every Monday at 05:23 UTC:
 
 - `pnpm install --frozen-lockfile`, `pnpm audit --audit-level moderate`, `pnpm lint` and
   `pnpm test` on the Node.js version of `.nvmrc`;
-- `pnpm install --frozen-lockfile` and `pnpm test` on Node.js 22 and 26: the oldest major release
-  that `engines` accepts and the newest one released. Dependabot does not update this matrix:
-  add each new major release of Node.js to it by hand.
+- `pnpm install --frozen-lockfile` and `pnpm test` on Node.js 22 and 24: the other LTS
+  lines that `engines` accepts. Dependabot does not update this matrix:
+  add each new LTS line of Node.js to it by hand.
 
 The audit fails the run on any advisory at or above moderate:
 

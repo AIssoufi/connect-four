@@ -12,7 +12,7 @@ how they hand over to each other. This page gives what this repository adds.
 | commitlint 21, Husky 9 | Conventional Commits and the `Refs: C4-<n>` trailer |
 | GitHub Actions | `ci.yml` (lint, tests), `commit-messages.yml` (commitlint) and `live-check.yml` (hourly and daily checks of the live site) |
 | Dependabot | Weekly pull requests for npm and GitHub Actions, of releases at least 7 days old |
-| pnpm 12, Node.js 24 | Install from the frozen lockfile, pnpm pinned by `packageManager` and Node.js by `.nvmrc` |
+| pnpm 12, Node.js 26 | Install from the frozen lockfile, pnpm pinned by `packageManager` and Node.js by `.nvmrc` |
 | Vitest 5, ESLint 10 | Tests, and lint of the code |
 | Redocly CLI 2 | Lint of the OpenAPI document |
 | Wrangler 4, Workers Builds | `pnpm dev` locally, and the deployment of `master` |
